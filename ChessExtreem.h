@@ -829,10 +829,29 @@ namespace ChessExtreem
 
     struct Coordenadas_InfoExtra : public Coordenadas
     {
+    private:
+        Coordenadas* CIE_coordenadasRef; // Puntero de referencia a otro objeto de Coordenadas
+    public:
         TipoPieza CIE_tipoPieza;
+
         explicit Coordenadas_InfoExtra(const Coordenadas& coordenadas, const TipoPieza tipo_pieza)
-        : Coordenadas{coordenadas}, CIE_tipoPieza(tipo_pieza) {}
+            : Coordenadas{ coordenadas }, CIE_tipoPieza(tipo_pieza), CIE_coordenadasRef{ nullptr } {}
         
+        ~Coordenadas_InfoExtra()
+        {
+            CIE_coordenadasRef = nullptr;
+        }
+
+        void setCoordenadasRef(Coordenadas& c)
+        {
+            CIE_coordenadasRef = &c;
+        }
+
+        Coordenadas& getCoordenadasRef()
+        {
+            return *CIE_coordenadasRef;
+        }
+
     };
     // SECCION DE TIPOS DE PIEZAS ->
     
@@ -917,11 +936,10 @@ namespace ChessExtreem
 
         explicit Bando(bool bandoBlancas = false) : B_bandoBlancas{ bandoBlancas } {}
 
-        void AgregarPieza(const Coordenadas_InfoExtra& coordenadasIE, TableroAjedrez& tablero)
-        {
+        void AgregarPieza(const Coordenadas_InfoExtra& coordenadasIE, TableroAjedrez& tablero) {
             Coordenadas c{ coordenadasIE };
-            switch (coordenadasIE.CIE_tipoPieza)
-            {
+
+            switch (coordenadasIE.CIE_tipoPieza) {
             case TipoPieza::Torre:
                 B_torres.push_back(c);
                 tablero.at(c.x).at(c.y) = std::make_shared<Torre>(c, B_torres.size() - 1, B_bandoBlancas, true);
@@ -950,15 +968,20 @@ namespace ChessExtreem
                 break;
             }
 
-            // Agregamos a la lista general de piezas del bando
-            B_piezas.push_back(coordenadasIE);
+            // Obtener la referencia del vector correcto
+            auto& piezasCoordenadas = (*this)[coordenadasIE.CIE_tipoPieza];
+            Coordenadas_InfoExtra coordCopy = coordenadasIE;
+            coordCopy.setCoordenadasRef(piezasCoordenadas.back());
+
+            // Agregar la copia a la lista general de piezas del bando
+            B_piezas.push_back(coordCopy);
         }
+
 
         void CrearBando(TableroAjedrez& tablero)
         {
             const int i_lado = (B_bandoBlancas) ? 0 : 7;
             const int i_add = (B_bandoBlancas) ? 1 : -1;
-
 
 
             // Creamos Torres
@@ -1439,6 +1462,11 @@ namespace ChessExtreem
             return mov.MC_Validacion.getValido();
         }
 
+        bool EsReyEnJaque(bool BandoBlancas)
+        {
+            auto& bando = (BandoBlancas) ? J_blancas : J_negras;
+            return PosicionEnJaque(bando[TipoPieza::Rey][0], BandoBlancas);
+        }
 
         void ValidadorGeneralDeMovimientos(MovimientoCompuesto& movimiento)
         {
@@ -1502,6 +1530,23 @@ namespace ChessExtreem
         void EliminacionPieza(const Coordenadas& c)
         {
             EliminacionPieza(c.x, c.y);
+        }
+
+        void CalcularTodosLosMovimientosBando(bool BandoBlancas)
+        {
+            auto& bando = (BandoBlancas) ? J_blancas : J_negras;
+            for (auto& cie : bando.B_piezas)
+            {
+                // Obtiene las coordenadas referenciadas de la pieza referida en el bando
+                auto& c = cie.getCoordenadasRef();
+                CalcularMovimientosPieza(c);
+            }
+        }
+
+        void CalcularTodosLosMovimientos()
+        {
+            CalcularTodosLosMovimientosBando(true); // Bando Blancas
+            CalcularTodosLosMovimientosBando(false); // Bando Negras
         }
 
     protected:
@@ -1691,6 +1736,14 @@ namespace ChessExtreem
         const CadenaMovimientos& ObtenerMovimientosPieza(Coordenadas c) {
             
             return ObtenerMovimientosPieza(c.x, c.y);
+        }
+
+        void AnalizarEstadoJuego()
+        {
+            // Comprobar estado de jaque
+            TipoBando Jaque = EsReyEnJaque(true) ? TipoBando::Blancas : EsReyEnJaque(false) ? TipoBando::Negras : TipoBando::Nulo;
+            
+            // Calcular todos los movimientos de las piezas
         }
 
         // Métodos para obtener el estado del juego y establecerlo
