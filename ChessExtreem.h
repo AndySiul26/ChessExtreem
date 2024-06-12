@@ -11,6 +11,7 @@
 #include<iostream>
 #include<unordered_map> // Incluir la librería necesaria para std::unordered_map
 #include <functional>
+#include <thread>
 #include "solucionar.h"
 
 namespace ChessExtreem
@@ -198,8 +199,28 @@ namespace ChessExtreem
 
     // <- SECCION DE COORDENADAS
     struct Coordenadas {
-        int x{ -1 }, y{ -1 }; // Default desasignadas
+        
+        int x, y; // Default desasignadas
+	
+        // Constructor por defecto
+        Coordenadas() : x(-1), y(-1) {}
 
+        // Constructor para inicializar con valores específicos
+        Coordenadas(int x, int y) : x(x), y(y) {}
+
+        // Constructor que acepta un std::initializer_list
+        Coordenadas(std::initializer_list<int> initList) {
+            if (initList.size() != 2) {
+                throw std::invalid_argument("Se requieren exactamente dos valores para inicializar Coordenadas.");
+            }
+
+            auto it = initList.begin();
+            x = *it;
+            y = *(it + 1);
+        }
+
+
+		// Sobrecarga de operadores para Coordenadas
         friend bool operator==(const Coordenadas& c1, const Coordenadas& c2);
         friend bool operator!=(const Coordenadas& c1, const Coordenadas& c2);
         Coordenadas absC() const
@@ -207,6 +228,7 @@ namespace ChessExtreem
             return Coordenadas{ abs(x) ,abs(y) };
         }
 
+		// Operadores de asignación
         Coordenadas operator+(const Coordenadas& c1) const;
         Coordenadas operator-(const Coordenadas& c1) const;
         Coordenadas operator*(const Coordenadas& c1) const;
@@ -834,9 +856,9 @@ namespace ChessExtreem
     public:
         TipoPieza CIE_tipoPieza;
 
-        explicit Coordenadas_InfoExtra(const Coordenadas& coordenadas, const TipoPieza tipo_pieza)
+        Coordenadas_InfoExtra(const Coordenadas& coordenadas, const TipoPieza tipo_pieza)
             : Coordenadas{ coordenadas }, CIE_tipoPieza(tipo_pieza), CIE_coordenadasRef{ nullptr } {}
-        
+                        
         ~Coordenadas_InfoExtra()
         {
             CIE_coordenadasRef = nullptr;
@@ -920,6 +942,41 @@ namespace ChessExtreem
 
     using Coordenadas_InfoExtra_Piezas = std::vector<Coordenadas_InfoExtra>;
 
+    class IndiceCoordenadasTipoPieza {
+    public:
+        int index;
+        CadenaCoordenadas& cadenaRef;
+
+        IndiceCoordenadasTipoPieza(int idx, CadenaCoordenadas& ref)
+            : index(idx), cadenaRef(ref) {}
+
+        // Constructor por copia
+        IndiceCoordenadasTipoPieza(const IndiceCoordenadasTipoPieza& other)
+            : index(other.index), cadenaRef(other.cadenaRef) {}
+
+        // Operador de asignación por copia
+        IndiceCoordenadasTipoPieza& operator=(const IndiceCoordenadasTipoPieza& other) {
+            if (this != &other) {
+                index = other.index;
+                cadenaRef = other.cadenaRef;
+            }
+            return *this;
+        }
+
+        // Sobrecarga del operador ()
+        Coordenadas& operator()() {
+            return cadenaRef[index];
+        }
+
+        // Sobrecarga del operador de conversión implícita a Coordenadas&
+        operator Coordenadas& () {
+            return cadenaRef[index];
+        }
+    };
+
+    using CadenaCoordenadasRef = std::vector<IndiceCoordenadasTipoPieza>;
+
+
     class Bando
     {
     private:
@@ -932,9 +989,43 @@ namespace ChessExtreem
         CadenaCoordenadas B_alfiles;
         CadenaCoordenadas B_torres;
     public:
-        Coordenadas_InfoExtra_Piezas B_piezas;
+        CadenaCoordenadasRef B_piezas;
 
-        explicit Bando(bool bandoBlancas = false) : B_bandoBlancas{ bandoBlancas } {}
+        Bando(bool bandoBlancas = false) : B_bandoBlancas{ bandoBlancas } {}
+
+        Bando(const Bando& otroBando) : B_bandoBlancas{ otroBando.B_bandoBlancas }
+        {
+            B_reyes = otroBando.B_reyes;
+            B_damas = otroBando.B_damas;
+            B_peones = otroBando.B_peones;
+            B_caballos = otroBando.B_caballos;
+            B_alfiles = otroBando.B_alfiles;
+            B_torres = otroBando.B_torres;
+            CorresponderPiezas();
+        }
+
+        void CorresponderPiezas() {
+            B_piezas.clear();
+
+            for (size_t i = 0; i < B_reyes.size(); ++i) {
+                B_piezas.emplace_back(i, B_reyes);
+            }
+            for (size_t i = 0; i < B_damas.size(); ++i) {
+                B_piezas.emplace_back(i, B_damas);
+            }
+            for (size_t i = 0; i < B_peones.size(); ++i) {
+                B_piezas.emplace_back(i, B_peones);
+            }
+            for (size_t i = 0; i < B_caballos.size(); ++i) {
+                B_piezas.emplace_back(i, B_caballos);
+            }
+            for (size_t i = 0; i < B_alfiles.size(); ++i) {
+                B_piezas.emplace_back(i, B_alfiles);
+            }
+            for (size_t i = 0; i < B_torres.size(); ++i) {
+                B_piezas.emplace_back(i, B_torres);
+            }
+        }
 
         void AgregarPieza(const Coordenadas_InfoExtra& coordenadasIE, TableroAjedrez& tablero) {
             Coordenadas c{ coordenadasIE };
@@ -968,21 +1059,12 @@ namespace ChessExtreem
                 break;
             }
 
-            // Obtener la referencia del vector correcto
-            auto& piezasCoordenadas = (*this)[coordenadasIE.CIE_tipoPieza];
-            Coordenadas_InfoExtra coordCopy = coordenadasIE;
-            coordCopy.setCoordenadasRef(piezasCoordenadas.back());
-
-            // Agregar la copia a la lista general de piezas del bando
-            B_piezas.push_back(coordCopy);
         }
-
 
         void CrearBando(TableroAjedrez& tablero)
         {
             const int i_lado = (B_bandoBlancas) ? 0 : 7;
             const int i_add = (B_bandoBlancas) ? 1 : -1;
-
 
             // Creamos Torres
             AgregarPieza(Coordenadas_InfoExtra{ {0, i_lado} ,TipoPieza::Torre }, tablero);
@@ -993,42 +1075,40 @@ namespace ChessExtreem
             AgregarPieza(Coordenadas_InfoExtra{ {6, i_lado}, TipoPieza::Caballo }, tablero);
 
             // Creamos Alfiles
-            AgregarPieza(Coordenadas_InfoExtra{ { 2, i_lado}, TipoPieza::Alfil }, tablero);
+            AgregarPieza(Coordenadas_InfoExtra{ {2, i_lado}, TipoPieza::Alfil }, tablero);
             AgregarPieza(Coordenadas_InfoExtra{ {5, i_lado}, TipoPieza::Alfil }, tablero);
 
             // Creamos Dama y Rey
-            AgregarPieza(Coordenadas_InfoExtra{ { 3, i_lado}, TipoPieza::Dama }, tablero);
-            AgregarPieza(Coordenadas_InfoExtra{ { 4, i_lado}, TipoPieza::Rey }, tablero);
+            AgregarPieza(Coordenadas_InfoExtra{ {3, i_lado}, TipoPieza::Dama }, tablero);
+            AgregarPieza(Coordenadas_InfoExtra{ {4, i_lado}, TipoPieza::Rey }, tablero);
 
             // Creamos Peones
-            for (int x = 0; x < 8; ++x)
-            {
-                AgregarPieza(Coordenadas_InfoExtra{ { x, i_lado + i_add}, TipoPieza::Peon }, tablero);
+            for (int x = 0; x < 8; ++x) {
+                AgregarPieza(Coordenadas_InfoExtra{ {x, i_lado + i_add}, TipoPieza::Peon }, tablero);
             }
+
+            CorresponderPiezas();
         }
 
-        // const Coordenadas& getCoordenadas(const TipoPieza tipo, int indice)
-        CadenaCoordenadas& operator[](TipoPieza tipo) 
+        CadenaCoordenadas& operator[](TipoPieza tipo)
         {
-            switch (tipo)
-            {
-            case ChessExtreem::TipoPieza::Torre:
+            switch (tipo) {
+            case TipoPieza::Torre:
                 return B_torres;
-            case ChessExtreem::TipoPieza::Caballo:
+            case TipoPieza::Caballo:
                 return B_caballos;
-            case ChessExtreem::TipoPieza::Alfil:
+            case TipoPieza::Alfil:
                 return B_alfiles;
-            case ChessExtreem::TipoPieza::Dama:
+            case TipoPieza::Dama:
                 return B_damas;
-            case ChessExtreem::TipoPieza::Rey:
+            case TipoPieza::Rey:
                 return B_reyes;
-            case ChessExtreem::TipoPieza::Peon:
+            case TipoPieza::Peon:
                 return B_peones;
             default:
-                return B_peones;
+                throw std::invalid_argument("Tipo de pieza no válido.");
             }
         }
-
     };
 
 
@@ -1532,21 +1612,39 @@ namespace ChessExtreem
             EliminacionPieza(c.x, c.y);
         }
 
-        void CalcularTodosLosMovimientosBando(bool BandoBlancas)
-        {
+        void CalcularTodosLosMovimientosBando(bool BandoBlancas) {
+            
             auto& bando = (BandoBlancas) ? J_blancas : J_negras;
-            for (auto& cie : bando.B_piezas)
-            {
-                // Obtiene las coordenadas referenciadas de la pieza referida en el bando
-                auto& c = cie.getCoordenadasRef();
-                CalcularMovimientosPieza(c);
+
+            // Crear puntero a función miembro para la sobrecarga específica
+            
+
+            for (auto& cie : bando.B_piezas) {
+				auto& pieza = ObtenerPieza(cie);
+				if (pieza) {
+					CalcularMovimientosPieza(cie);
+				}            
+            
             }
+        
         }
 
         void CalcularTodosLosMovimientos()
         {
             CalcularTodosLosMovimientosBando(true); // Bando Blancas
             CalcularTodosLosMovimientosBando(false); // Bando Negras
+        }
+
+        bool TieneMovimientosDisponiblesBando(bool BandoBlancas)
+        {
+			// Comprobar si un bando tiene movimientos disponibles
+			auto& bando = (BandoBlancas) ? J_blancas : J_negras;
+			for (auto& cie : bando.B_piezas) {
+				
+                auto& pieza = ObtenerPieza(cie);
+				if (pieza->getMovimientos().size() > 0) return true;
+			}
+			return false;
         }
 
     protected:
@@ -1723,6 +1821,7 @@ namespace ChessExtreem
 
             J_estado.cambiarTurno();
             LimpiarMovimientosValidadosPiezas();
+            CalcularTodosLosMovimientos();
             return true; // Llegar al final significa que se ha movido la pieza
         }
 
