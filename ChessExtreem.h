@@ -988,6 +988,15 @@ namespace ChessExtreem
         CadenaCoordenadas B_caballos;
         CadenaCoordenadas B_alfiles;
         CadenaCoordenadas B_torres;
+
+		int B_cantidadPiezas;
+		int B_cantidadReyes;
+		int B_cantidadDamas;
+		int B_cantidadPeones;
+		int B_cantidadCaballos;
+		int B_cantidadAlfiles;
+		int B_cantidadTorres;
+
     public:
         CadenaCoordenadasRef B_piezas;
 
@@ -1109,6 +1118,82 @@ namespace ChessExtreem
                 throw std::invalid_argument("Tipo de pieza no válido.");
             }
         }
+
+		const CadenaCoordenadas& operator[](TipoPieza tipo) const
+		{
+			switch (tipo) {
+			case TipoPieza::Torre:
+				return B_torres;
+			case TipoPieza::Caballo:
+				return B_caballos;
+			case TipoPieza::Alfil:
+				return B_alfiles;
+			case TipoPieza::Dama:
+				return B_damas;
+			case TipoPieza::Rey:
+				return B_reyes;
+			case TipoPieza::Peon:
+				return B_peones;
+			default:
+				throw std::invalid_argument("Tipo de pieza no válido.");
+			}
+		}
+
+        // Retorna la cantidad total de piezas
+		int CantidadPiezas() const { return B_cantidadPiezas; }
+
+        int CantidadPiezas(TipoPieza tipo) const
+        {            
+            // Retorna la cantidad de piezas del tipo especificado          
+			switch (tipo) {
+			case TipoPieza::Torre:
+				return B_cantidadTorres;
+			case TipoPieza::Caballo:
+				return B_cantidadCaballos;
+			case TipoPieza::Alfil:
+				return B_cantidadAlfiles;
+			case TipoPieza::Dama:
+				return B_cantidadDamas;
+			case TipoPieza::Rey:
+				return B_cantidadReyes;
+			case TipoPieza::Peon:
+				return B_cantidadPeones;
+			default:
+				throw std::invalid_argument("Tipo de pieza no válido.");
+			}
+        }
+
+		void ActualizarPosicionPieza(TipoPieza tipo, int indice, const Coordenadas& nuevaPosicion)
+        {
+			operator[](tipo)[indice] = nuevaPosicion;
+			if (nuevaPosicion == Coordenadas{ -1, -1 }) {
+				--B_cantidadPiezas;
+                switch (tipo) {
+				case TipoPieza::Torre:
+					--B_cantidadTorres;
+					break;
+				case TipoPieza::Caballo:
+					--B_cantidadCaballos;
+					break;
+				case TipoPieza::Alfil:
+					--B_cantidadAlfiles;
+					break;
+				case TipoPieza::Dama:
+					--B_cantidadDamas;
+					break;
+				case TipoPieza::Rey:
+					--B_cantidadReyes;
+					break;
+				case TipoPieza::Peon:
+					--B_cantidadPeones;
+					break;
+				default:
+					break;
+				}
+			}
+		}
+
+
     };
 
 
@@ -1133,7 +1218,7 @@ namespace ChessExtreem
             if (!pieza) return;
 
             auto& bando = (pieza->getBandoBlancas()) ? J_blancas : J_negras;
-            bando[pieza->obtenerTipo()][pieza->GetIndiceBando()] = mov.Destino;
+			bando.ActualizarPosicionPieza(pieza->obtenerTipo(), pieza->GetIndiceBando(), mov.Destino);            
         }
 
         void P_MoverPieza(const Movimiento& movimiento)
@@ -1616,9 +1701,6 @@ namespace ChessExtreem
             
             auto& bando = (BandoBlancas) ? J_blancas : J_negras;
 
-            // Crear puntero a función miembro para la sobrecarga específica
-            
-
             for (auto& cie : bando.B_piezas) {
 				auto& pieza = ObtenerPieza(cie);
 				if (pieza) {
@@ -1631,8 +1713,14 @@ namespace ChessExtreem
 
         void CalcularTodosLosMovimientos()
         {
-            CalcularTodosLosMovimientosBando(true); // Bando Blancas
-            CalcularTodosLosMovimientosBando(false); // Bando Negras
+			std::thread t1(&Juego::CalcularTodosLosMovimientosBando, this, true);
+			std::thread t2(&Juego::CalcularTodosLosMovimientosBando, this, false);
+            
+            //CalcularTodosLosMovimientosBando(true); // Bando Blancas
+            //CalcularTodosLosMovimientosBando(false); // Bando Negras
+
+			t1.join();
+			t2.join();
         }
 
         bool TieneMovimientosDisponiblesBando(bool BandoBlancas)
@@ -1646,6 +1734,8 @@ namespace ChessExtreem
 			}
 			return false;
         }
+
+         
 
     protected:
         EstadoJuego J_estado{};
@@ -1819,9 +1909,7 @@ namespace ChessExtreem
             // Actualizar lista de movimientos realizados del juego
             J_jugadas.push_back(std::move(mc));
 
-            J_estado.cambiarTurno();
-            LimpiarMovimientosValidadosPiezas();
-            CalcularTodosLosMovimientos();
+			AnalizarEstadoJuego();
             return true; // Llegar al final significa que se ha movido la pieza
         }
 
@@ -1839,10 +1927,42 @@ namespace ChessExtreem
 
         void AnalizarEstadoJuego()
         {
+			// Se cambia de turno y se limpian los movimientos de las piezas
+            J_estado.cambiarTurno();
+            LimpiarMovimientosValidadosPiezas();
+
+			// Se calculan todos los movimientos posibles para saber el estado del juego
+            CalcularTodosLosMovimientos();
+
             // Comprobar estado de jaque
             TipoBando Jaque = EsReyEnJaque(true) ? TipoBando::Blancas : EsReyEnJaque(false) ? TipoBando::Negras : TipoBando::Nulo;
+
+			// Comprobar si hay jaque mate o tablas
+			if (Jaque != TipoBando::Nulo)
+            {
+                if (!TieneMovimientosDisponiblesBando(J_estado.esTurnoBlancas()))
+                {
+                    if (Jaque == TipoBando::Blancas)
+                    {
+						J_estado.setEstado(Estado::JaqueMateNegras);
+					}
+                    else
+                    {
+						J_estado.setEstado(Estado::JaqueMateBlancas);
+					}
+				}
+			}
+			else
+			{
+				if (!TieneMovimientosDisponiblesBando(J_estado.esTurnoBlancas()))
+				{
+					J_estado.setEstado(Estado::Ahogado);
+				}
+			}
+            
             
             // Calcular todos los movimientos de las piezas
+
         }
 
         // Métodos para obtener el estado del juego y establecerlo
