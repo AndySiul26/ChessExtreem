@@ -324,6 +324,13 @@ namespace ChessExtreem
             return *this;
         }
 
+		friend bool operator==(const MovimientoCompuesto& mc1, const MovimientoCompuesto& mc2) {
+			return mc1.MC_Movimiento == mc2.MC_Movimiento && mc1.MC_MovimientoPiezaRelacionada == mc2.MC_MovimientoPiezaRelacionada;
+		}
+
+		friend bool operator!=(const MovimientoCompuesto& mc1, const MovimientoCompuesto& mc2) {
+			return !(mc1 == mc2);
+		}
     };
     
 	using CadenaMovimientos = std::vector<MovimientoCompuesto>;
@@ -989,13 +996,13 @@ namespace ChessExtreem
         CadenaCoordenadas B_alfiles;
         CadenaCoordenadas B_torres;
 
-		int B_cantidadPiezas;
-		int B_cantidadReyes;
-		int B_cantidadDamas;
-		int B_cantidadPeones;
-		int B_cantidadCaballos;
-		int B_cantidadAlfiles;
-		int B_cantidadTorres;
+        int B_cantidadPiezas{ 0 };
+        int B_cantidadReyes{ 0 };
+        int B_cantidadDamas{ 0 };
+		int B_cantidadPeones{ 0 };
+		int B_cantidadCaballos{ 0 };
+		int B_cantidadAlfiles{ 0 };
+		int B_cantidadTorres{ 0 };
 
     public:
         CadenaCoordenadasRef B_piezas;
@@ -1010,6 +1017,15 @@ namespace ChessExtreem
             B_caballos = otroBando.B_caballos;
             B_alfiles = otroBando.B_alfiles;
             B_torres = otroBando.B_torres;
+
+			B_cantidadAlfiles = otroBando.B_cantidadAlfiles;
+			B_cantidadCaballos = otroBando.B_cantidadCaballos;
+			B_cantidadDamas = otroBando.B_cantidadDamas;
+			B_cantidadPeones = otroBando.B_cantidadPeones;
+			B_cantidadReyes = otroBando.B_cantidadReyes;
+			B_cantidadTorres = otroBando.B_cantidadTorres;
+			B_cantidadPiezas = otroBando.B_cantidadPiezas;
+
             CorresponderPiezas();
         }
 
@@ -1068,7 +1084,35 @@ namespace ChessExtreem
                 break;
             }
 
+			IncrementarContadores(coordenadasIE.CIE_tipoPieza);
         }
+
+		void IncrementarContadores(const TipoPieza tipo)
+		{
+			++B_cantidadPiezas;
+			switch (tipo) {
+			case TipoPieza::Torre:
+				++B_cantidadTorres;
+				break;
+			case TipoPieza::Caballo:
+				++B_cantidadCaballos;
+				break;
+			case TipoPieza::Alfil:
+				++B_cantidadAlfiles;
+				break;
+			case TipoPieza::Dama:
+				++B_cantidadDamas;
+				break;
+			case TipoPieza::Rey:
+				++B_cantidadReyes;
+				break;
+			case TipoPieza::Peon:
+				++B_cantidadPeones;
+				break;
+			default:
+				break;
+			}
+		}
 
         void CrearBando(TableroAjedrez& tablero)
         {
@@ -1200,10 +1244,28 @@ namespace ChessExtreem
     // Define la clase Juego para representar el juego de ajedrez
     class Juego {
     private:
+
+		const Coordenadas CoordenadasNulas{ -1, -1 };
+
         TableroAjedrez J_tablero;
         std::shared_ptr<Pieza> casillaNula;
 
-        std::shared_ptr<Pieza>& ObtenerPieza(const Coordenadas& coordenadas)
+        std::shared_ptr<Pieza>& ObtenerPieza(const Coordenadas& coordenadas) 
+        {
+            if (SonCoordenadasValidas(coordenadas))
+                return J_tablero[coordenadas.x][coordenadas.y];
+            else
+                return casillaNula;
+        }
+
+        std::shared_ptr<Pieza>& ObtenerPieza(bool blancas, TipoPieza tipo, int indice)
+        {
+			auto& bando = (blancas) ? J_blancas : J_negras;
+            auto& coordenadas = bando[tipo][indice];
+			return ObtenerPieza(coordenadas);
+        }
+
+        const std::shared_ptr<Pieza>& ObtenerPieza(const Coordenadas& coordenadas) const
         {
             if (SonCoordenadasValidas(coordenadas))
                 return J_tablero[coordenadas.x][coordenadas.y];
@@ -1229,7 +1291,7 @@ namespace ChessExtreem
 
             // Actualizar bandos correspondientes
             // Al poner coordenadas negativas, indica que la pieza ha sido eliminada del tablero
-            ActualizarCoordenadasBando(Movimiento{ destino, Coordenadas{-1,-1} });
+            ActualizarCoordenadasBando(Movimiento{ destino, CoordenadasNulas });
             ActualizarCoordenadasBando(Movimiento{ origen, destino });
 
             // Actualizar tablero
@@ -1247,6 +1309,7 @@ namespace ChessExtreem
 
             P_MoverPieza(movimiento.MC_Movimiento);
             J_tablero[destino.x][destino.y]->guardarMovimientoCompuesto(movimiento);
+			J_jugadas.push_back(movimiento);
 
             J_estado.setCambiado();
         }
@@ -1743,6 +1806,23 @@ namespace ChessExtreem
         Bando J_negras{};
         CadenaMovimientos J_jugadas{};
 
+		Bando& getBando(bool bandoBlancas) {
+			return (bandoBlancas) ? J_blancas : J_negras;
+		}
+
+		bool EsPiezaDelTurno(const Coordenadas& coordenadas) const
+		{
+			auto& pieza  = ObtenerPieza(coordenadas);
+			if (!pieza) return false;
+
+            return (pieza->getBandoBlancas() == (J_estado.getTurno() == TipoBando::Blancas));
+		}
+
+		bool EsPiezaDelTurno(int x, int y) const
+		{
+			return EsPiezaDelTurno(Coordenadas{ x,y });
+		}
+
     public:
         // Constructor por defecto
         Juego() {
@@ -1929,7 +2009,7 @@ namespace ChessExtreem
         {
 			// Se cambia de turno y se limpian los movimientos de las piezas
             J_estado.cambiarTurno();
-            LimpiarMovimientosValidadosPiezas();
+            LimpiarMovimientosValidadosPiezas(); 
 
 			// Se calculan todos los movimientos posibles para saber el estado del juego
             CalcularTodosLosMovimientos();
@@ -1959,10 +2039,71 @@ namespace ChessExtreem
 					J_estado.setEstado(Estado::Ahogado);
 				}
 			}
-            
-            
-            // Calcular todos los movimientos de las piezas
 
+			// Comprobar si hay tablas
+			auto fncSoloReyesTienenMovimientos = [&]() -> bool {
+                for (auto& bando : { true, false })
+                {
+                    
+					for (auto tipo : { TipoPieza::Torre, TipoPieza::Caballo, TipoPieza::Alfil, TipoPieza::Dama, TipoPieza::Peon })
+                    {
+						auto bandoSeleccionado = getBando(bando);
+
+						for (int i = 0; i < bandoSeleccionado.CantidadPiezas(tipo); ++i)
+                        {
+							if (bandoSeleccionado[tipo][i] == CoordenadasNulas) continue; // Pieza eliminada
+
+                            if (ObtenerPieza(bando, tipo, i)->getMovimientos().size() > 0)
+                            {
+                                return false;                                
+                            }
+                        }
+					
+                    }
+				}
+
+				if (ObtenerPieza(true, TipoPieza::Rey, 0)->getMovimientos().size() == 0) return false;
+				if (ObtenerPieza(false, TipoPieza::Rey, 0)->getMovimientos().size() == 0) return false;
+
+				return true;
+			};
+            
+            auto fncRepeticionTresMovimientos = [&]()-> bool
+                {
+                    // Comprobar si se han realizado tres movimientos repetidos
+                    // Se comprueba si los tres ultimos movimientos son iguales
+                    if (J_jugadas.size() > 6)
+                    {
+                        if (J_jugadas[J_jugadas.size() - 1] == J_jugadas[J_jugadas.size() - 3] &&
+                            J_jugadas[J_jugadas.size() - 3] == J_jugadas[J_jugadas.size() - 5])
+                        {
+                            return true;
+                        }
+                    }
+					return false;
+                };
+
+			// Comprobar estados de tablas
+			// Primera comprobacion, solo dos reyes existen
+			if (J_blancas.CantidadPiezas() == 1 && J_negras.CantidadPiezas() == 1)
+			{
+				// Si existe solo una pieza de cada bando, se comprueba que son reyes (el rey nunca es eliminado o capturado)
+				J_estado.setEstado(Estado::Tablas);
+			}
+            else if (fncSoloReyesTienenMovimientos()) // Segunda comprobación si solo los reyes tiene movimientos
+            {
+				J_estado.setEstado(Estado::Tablas);
+            }
+			else if (fncRepeticionTresMovimientos()) // Tercera comprobación si se han realizado tres movimientos repetidos
+			{
+				J_estado.setEstado(Estado::Tablas);
+				
+			}
+            
+
+            
+
+				
         }
 
         // Métodos para obtener el estado del juego y establecerlo
