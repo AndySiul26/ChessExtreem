@@ -104,7 +104,7 @@ namespace Chess
 		imageAttributes->SetColorMatrix(gcnew ColorMatrix(ptsArray), ColorMatrixFlag::Default, ColorAdjustType::Bitmap);
 
 		Graphics^ g = Graphics::FromImage(adjustedImage);
-		g->DrawImage(original, Rectangle(0, 0, original->Width, original->Height), 0, 0, original->Width, original->Height, GraphicsUnit::Pixel, imageAttributes);
+		g->DrawImage(original, System::Drawing::Rectangle(0, 0, original->Width, original->Height), 0, 0, original->Width, original->Height, GraphicsUnit::Pixel, imageAttributes);
 
 		label->Image = adjustedImage;
 	}
@@ -324,6 +324,32 @@ namespace Chess
 
 	private:
 		ChessInterfazError errorCode;
+	};
+
+	public ref class DatosCoronacion
+	{
+	private:
+		TipoPieza tipoPieza;
+		bool validado;
+
+	public:
+		DatosCoronacion(TipoPieza tipoPieza, bool validado)
+		{
+			this->tipoPieza = tipoPieza;
+			this->validado = validado;
+		}
+
+		property TipoPieza TipoPiezaCoronacion
+		{
+			void set(TipoPieza value) { tipoPieza = value; }
+			TipoPieza get() { return tipoPieza; }
+		}
+
+		property bool Validado
+		{
+			void set(bool value) { validado = value; }
+			bool get() { return validado; }
+		}
 	};
 
 }

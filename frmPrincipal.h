@@ -1,7 +1,10 @@
 ﻿#pragma once
 #include "ChessEfectos.h"
+#include "SelectorPieza.h"
 #include <string>
 #include <msclr/marshal_cppstd.h>
+
+
 
 namespace Chess {
 
@@ -14,6 +17,7 @@ namespace Chess {
 	using namespace System::Drawing;
 	using namespace System::Drawing::Imaging;
 	using namespace ChessExtreem;
+	
 	#define WinGeneric System::Collections::Generic
 	
 	Juego juegoGeneral;
@@ -133,7 +137,7 @@ namespace Chess {
 				   if (it != piezaARepresentacion.end()) {
 					   key = it->second;
 				   }
-				   key += (pieza->getBandoBlancas()) ? L"B.png" : L"N.png";
+				   key += (pieza->getBandoBlancas()) ? L"B" : L"N";
 			   }
 
 			   return msclr::interop::marshal_as<String^>(key);
@@ -160,7 +164,7 @@ namespace Chess {
 				   if (it != piezaARepresentacion.end()) {
 					   key = it->second;
 				   }
-				   key += (pieza->getBandoBlancas()) ? L"B.png" : L"N.png";
+				   key += (pieza->getBandoBlancas()) ? L"B" : L"N";
 			   }
 
 			   return msclr::interop::marshal_as<String^>(key);
@@ -202,7 +206,7 @@ namespace Chess {
 			   if (Casilla(x, y)->ImageKey == KeyPieza(x, y) && !datos->conEfecto) return; // Innecesario actualizar
 
 			   Casilla(x, y)->ImageKey = KeyPieza(x, y);
-			   Casilla(x, y)->Image = f_Piezas->Images[KeyPieza(x, y)];
+			   Casilla(x, y)->Image = f_Piezas->Images[Casilla(x,y)->ImageKey];
 		   }
 
 		   void ActualizarImagenCasilla(Coordenadas&& c, int indexOtroJuego)
@@ -237,7 +241,7 @@ namespace Chess {
 					   }
 				   }
 
-				   ModoConsola::ImprimirTablero(std::move(juegoGeneral));
+				   ModoConsola::ImprimirTablero(juegoGeneral);
 			   }
 			   else
 			   {
@@ -344,6 +348,8 @@ namespace Chess {
 		/// Variable del diseñador necesaria.
 		/// </summary>
 		array<Label^>^ labels;
+		String^ dataReceived;
+		DatosCoronacion^ coronacion;
 
 #pragma region Windows Form Designer generated code
 		/// <summary>
@@ -376,21 +382,21 @@ namespace Chess {
 			// 
 			this->f_Piezas->ImageStream = (cli::safe_cast<System::Windows::Forms::ImageListStreamer^>(resources->GetObject(L"f_Piezas.ImageStream")));
 			this->f_Piezas->TransparentColor = System::Drawing::Color::Transparent;
-			this->f_Piezas->Images->SetKeyName(0, L"CB.png");
-			this->f_Piezas->Images->SetKeyName(1, L"AB.png");
-			this->f_Piezas->Images->SetKeyName(2, L"AN.png");
-			this->f_Piezas->Images->SetKeyName(3, L"CB.png");
-			this->f_Piezas->Images->SetKeyName(4, L"CN.png");
-			this->f_Piezas->Images->SetKeyName(5, L"DB.png");
-			this->f_Piezas->Images->SetKeyName(6, L"DN.png");
-			this->f_Piezas->Images->SetKeyName(7, L"PB.png");
-			this->f_Piezas->Images->SetKeyName(8, L"PN.png");
-			this->f_Piezas->Images->SetKeyName(9, L"RB.png");
-			this->f_Piezas->Images->SetKeyName(10, L"RBJ.png");
-			this->f_Piezas->Images->SetKeyName(11, L"RN.png");
-			this->f_Piezas->Images->SetKeyName(12, L"RNJ.png");
-			this->f_Piezas->Images->SetKeyName(13, L"TB.png");
-			this->f_Piezas->Images->SetKeyName(14, L"TN.png");
+			this->f_Piezas->Images->SetKeyName(0, L"CB");
+			this->f_Piezas->Images->SetKeyName(1, L"AB");
+			this->f_Piezas->Images->SetKeyName(2, L"AN");
+			this->f_Piezas->Images->SetKeyName(3, L"CB");
+			this->f_Piezas->Images->SetKeyName(4, L"CN");
+			this->f_Piezas->Images->SetKeyName(5, L"DB");
+			this->f_Piezas->Images->SetKeyName(6, L"DN");
+			this->f_Piezas->Images->SetKeyName(7, L"PB");
+			this->f_Piezas->Images->SetKeyName(8, L"PN");
+			this->f_Piezas->Images->SetKeyName(9, L"RB");
+			this->f_Piezas->Images->SetKeyName(10, L"RBJ");
+			this->f_Piezas->Images->SetKeyName(11, L"RN");
+			this->f_Piezas->Images->SetKeyName(12, L"RNJ");
+			this->f_Piezas->Images->SetKeyName(13, L"TB");
+			this->f_Piezas->Images->SetKeyName(14, L"TN");
 			// 
 			// f_Casilla
 			// 
@@ -440,8 +446,11 @@ namespace Chess {
 	private: System::Void frmPrincipal_Click(System::Object^ sender, System::EventArgs^ e) {
 		Console::WriteLine("Click fondo...");
 
-		
-		static bool mostrarOtroJuego{ false};
+		SelectorPieza^ frm_Selector = gcnew SelectorPieza((juegoGeneral.obtenerEstado().esTurnoBlancas()) ? L"B": L"N");
+		frm_Selector->EnviarDatos += gcnew System::EventHandler<System::String^>(this, &Chess::frmPrincipal::RecepcionPiezaSelector);
+		frm_Selector->ShowDialog();
+				
+	/*	static bool mostrarOtroJuego{ false};
 		mostrarOtroJuego = !mostrarOtroJuego;
 
 		if (mostrarOtroJuego)
@@ -458,7 +467,7 @@ namespace Chess {
 		else
 		{
 			ActualizarTableroInterfaz(true);
-		}
+		}*/
 	}
 	
 private: 
@@ -535,8 +544,60 @@ private:
 		label->BackColor = color; 
 	}
 
+	void MoverPieza(Coordenadas origen, Coordenadas destino)
+	{
+		// Primero debemos validar el movimiento
+		auto& movimientos = juegoGeneral.ObtenerMovimientosPieza(origen);
+		const MovimientoCompuesto* movimientoSeleccionado{ nullptr };
+
+		for (auto& mov : movimientos)
+		{
+			if (mov.MC_Movimiento.Destino == destino)
+			{				
+				movimientoSeleccionado = &mov;
+				break;
+			}
+		}
+
+		if (!movimientoSeleccionado)
+		{
+			Console::WriteLine("Movimiento no válido");
+			movimientoSeleccionado = nullptr;
+			return;
+		}
+
+		if (movimientoSeleccionado->MC_Validacion.getTipoEspecial() == TipoMovimientoEspecial::PeonCoronacion)
+		{
+			SelectorPieza^ frm_Selector = gcnew SelectorPieza((juegoGeneral.obtenerEstado().esTurnoBlancas()) ? L"B" : L"N");
+			frm_Selector->EnviarDatos += gcnew System::EventHandler<System::String^>(this, &Chess::frmPrincipal::RecepcionPiezaSelector);
+			frm_Selector->ShowDialog();
+			if (coronacion)
+			{
+				if (coronacion->Validado)
+				{
+					juegoGeneral.MoverPieza(origen, destino, coronacion->TipoPiezaCoronacion);
+					return;
+				}
+			}			
+			
+		}
+		
+		juegoGeneral.MoverPieza(origen, destino);
+		
+		movimientoSeleccionado = nullptr;
+		// ActualizarTableroInterfaz(); // esto ya se realiza en el evento Casilla_Click
+
+	}
+
 	System::Void f_Casilla_Click(System::Object^ sender, System::EventArgs^ e) 
 	{
+		// Verificar si el juego ha terminado
+		if (juegoGeneral.EsJuegoTerminado())
+		{
+			MessageBox::Show("Juego terminado");
+			return;
+		}
+
 		Label^ label{ safe_cast<Label^>(sender) };
 		/*if (!label->Tag)
 		{
@@ -558,7 +619,7 @@ private:
 		else
 		{			
 			label->Tag = nullptr;
-			label->ImageKey = L"AB.PNG";
+			label->ImageKey = L"AB";
 		}*/
 		
 		/*if (!label->Tag)
@@ -593,7 +654,8 @@ private:
 				if(!pieza || juegoGeneral[datos_casilla_sel->x][datos_casilla_sel->y]->getBandoBlancas() != bandoBlancas)
 				{
 					SeleccionarCasilla(f_Casilla_Seleccionada); // Deseleccionar
-					juegoGeneral.MoverPieza(Coordenadas{ datos_casilla_sel->x, datos_casilla_sel->y }, Coordenadas{ datos->x, datos->y });
+
+					MoverPieza(Coordenadas{ datos_casilla_sel->x, datos_casilla_sel->y }, Coordenadas{ datos->x, datos->y });
 				}
 				else
 				{
@@ -620,7 +682,7 @@ private:
 			{
 				
 				// EfectoMovimiento(label, static_cast<CasillaDestino>(Solucionar::generarNumeroAleatorio(3)));
-				EfectoMovimiento(label, CasillaDestino::Coronacion);
+				//EfectoMovimiento(label, CasillaDestino::Coronacion);
 				//ChangeImageTone(label, 255, 25, 25, 200);
 			}
 		}
@@ -628,6 +690,38 @@ private:
 		ActualizarTableroInterfaz();
 
 	}
+
+
+	void RecepcionPiezaSelector(System::Object^ sender, String^ data)
+	{
+
+		std::unordered_map<std::wstring, TipoPieza> representacionAPieza = {
+			{ L"T", TipoPieza::Torre },
+			{ L"C", TipoPieza::Caballo },
+			{ L"A", TipoPieza::Alfil },
+			{ L"D", TipoPieza::Dama },
+			{ L"R", TipoPieza::Rey },
+			{ L"P", TipoPieza::Peon }
+		};
+
+		std::wstring key = msclr::interop::marshal_as<std::wstring>(data);
+		// data contendrá la representación de la pieza seleccionada como "TB", "CB", "AB", "DB", "RB", "PB"
+		// necesitamos obtener su primer caracter representativo para obtener el tipo de pieza
+		auto it = representacionAPieza.find(key.substr(0, 1));
+		if (it != representacionAPieza.end())
+		{
+			TipoPieza tipoPieza = it->second;
+			coronacion = gcnew DatosCoronacion(tipoPieza, true);
+		}
+		else
+		{
+			coronacion = gcnew DatosCoronacion(TipoPieza::Dama, false);
+		}
+
+		dataReceived = data;
+		Console::WriteLine("Data received: " + dataReceived);
+	}
+
 private: System::Void f_Tablero_Click(System::Object^ sender, System::EventArgs^ e) {
 	}
 };
