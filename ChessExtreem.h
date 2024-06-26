@@ -1316,6 +1316,20 @@ namespace ChessExtreem
     };
 
 
+    struct Jugada {
+		MovimientoCompuesto J_movimiento;
+		bool bandoBlancas;
+		TipoPieza tipoPieza;
+		int indiceBando;
+        
+        Jugada(MovimientoCompuesto& mc, bool blancas, TipoPieza tipo, int indice):
+            J_movimiento{ mc }, bandoBlancas{ blancas }, tipoPieza{ tipo }, indiceBando {
+            indice
+        } {}
+    };
+
+	using Jugadas = std::vector<Jugada>;
+
     // Define la clase Juego para representar el juego de ajedrez
     class Juego {
     private:
@@ -1657,7 +1671,7 @@ namespace ChessExtreem
                         // Condición de salida invalidada 
                         if (J_jugadas.size() > 0)
                         {
-                            if (J_jugadas.at(J_jugadas.size() - 1).MC_Movimiento.Destino != coordenadas_CapturaAlPaso)
+                            if (J_jugadas.at(J_jugadas.size() - 1).J_movimiento.MC_Movimiento.Destino != coordenadas_CapturaAlPaso)
                             {
                                 // Si es diferente el destino de la jugada anterior a las coordenadas de la casilla de posible captura al paso es invalido, aunque asi fuese un peon que cumpla con la condición de dos pasos anteriores
                                 mov.MC_Validacion.setTipoValidacion(ValidacionMovimiento::Prohibido_PosicionLibrePeroInvalida);
@@ -1743,6 +1757,13 @@ namespace ChessExtreem
                 TipoMovimientoEspecial::ReyEnroqueCorto,
                 TipoMovimientoEspecial::ReyEnroqueLargo))
             {
+				// Primero se debe comprobar que no este en jaque
+				if (PosicionEnJaque(mov.MC_Movimiento.Origen, bandoBlancas))
+				{
+					mov.MC_Validacion.setTipoValidacion(ValidacionMovimiento::Prohibido_ReyEnJaque);
+					return false;
+				}
+
                 // Comprobación inicial, si el movimiento es de tipo enroque 
                 // el rey no debe haberse movido            
                 if (casilla_origen->getMovimientosPasados().size() > 0)
@@ -1815,6 +1836,7 @@ namespace ChessExtreem
             bool bandoBlancas = casillaPieza->getBandoBlancas();
 
             Juego copiaJuego{ *this };
+
             
             copiaJuego.P_MoverPieza(mov);
             auto& bando = (bandoBlancas) ? copiaJuego.J_blancas : copiaJuego.J_negras;
@@ -1938,17 +1960,16 @@ namespace ChessExtreem
 			return false;
         }
 
-         
+        Bando& getBando(bool bandoBlancas) {
+            return (bandoBlancas) ? J_blancas : J_negras;
+        }
 
     protected:
         EstadoJuego J_estado{};
         Bando J_blancas{ true };
         Bando J_negras{};
-        CadenaMovimientos J_jugadas{};
+        Jugadas J_jugadas{};
 
-		Bando& getBando(bool bandoBlancas) {
-			return (bandoBlancas) ? J_blancas : J_negras;
-		}
 
 		bool EsPiezaDelTurno(const Coordenadas& coordenadas) const
 		{
@@ -2041,12 +2062,18 @@ namespace ChessExtreem
             J_tablero = std::move(otro.J_tablero);
 
             // Mover las instancias de Bando
+		
             J_blancas = std::move(otro.J_blancas);
             J_negras = std::move(otro.J_negras);
             J_jugadas = std::move(otro.J_jugadas);
 
             return *this;
         }
+
+		// ObtenerBando se puede usar como pública porque solo es una función que no modificará el estado del juego
+		const Bando& ObtenerBando(bool bandoBlancas) const {
+			return (bandoBlancas) ? J_blancas : J_negras;
+		}
 
         bool SonCoordenadasValidas(const Coordenadas& coordenadas) const
         {
@@ -2089,6 +2116,7 @@ namespace ChessExtreem
 			return J_estado.getEstado() == Estado::JaqueMateBlancas ||
 				J_estado.getEstado() == Estado::JaqueMateNegras ||
 				J_estado.getEstado() == Estado::Ahogado ||
+				J_estado.getEstado() == Estado::RepeticionTriple ||
 				J_estado.getEstado() == Estado::Tablas;
 		}
 
@@ -2131,6 +2159,7 @@ namespace ChessExtreem
 				// Cambio en la pieza de peon a la seleccionada
 				if (CoronacionPieza == TipoPieza::Rey || CoronacionPieza == TipoPieza::Peon) break; // No se puede coronar a un rey o un peon
 				ConvertirPiezaEnTablero(destino, CoronacionPieza);
+				pieza = J_tablero[destino.x][destino.y]; // Actualizar la pieza
                 break;
             case TipoMovimientoEspecial::ReyEnroqueCorto:               
             case TipoMovimientoEspecial::ReyEnroqueLargo:
@@ -2139,9 +2168,13 @@ namespace ChessExtreem
             default:
                 break;
             }
+
+                    
+            
+
             // pieza->LimpiarMovimientosPosibles(); // Una vez que la pieza se mueva se debe eliminar sus movimientos calculados ya que no corresponden a su posición actual
             // Actualizar lista de movimientos realizados del juego
-            J_jugadas.push_back(std::move(mc));
+            J_jugadas.emplace_back(Jugada{mc, pieza->getBandoBlancas(), pieza->obtenerTipo(), pieza->GetIndiceBando()});
 
 			AnalizarEstadoJuego();
             return true; // Llegar al final significa que se ha movido la pieza
@@ -2175,9 +2208,12 @@ namespace ChessExtreem
             // Comprobar estado de jaque
             TipoBando Jaque = EsReyEnJaque(true) ? TipoBando::Blancas : EsReyEnJaque(false) ? TipoBando::Negras : TipoBando::Nulo;
 
-			// Comprobar si hay jaque mate o tablas
+			// Comprobar si hay jaque o tablas
 			if (Jaque != TipoBando::Nulo)
             {
+				J_estado.setEstado(Jaque == TipoBando::Blancas ? Estado::JaqueBlancas : Estado::JaqueNegras);
+
+				// Comprobar si hay jaque mate
                 if (!TieneMovimientosDisponiblesBando(J_estado.esTurnoBlancas()))
                 {
                     if (Jaque == TipoBando::Blancas)
@@ -2232,8 +2268,13 @@ namespace ChessExtreem
                     // Se comprueba si los tres ultimos movimientos son iguales
                     if (J_jugadas.size() > 6)
                     {
-                        if (J_jugadas[J_jugadas.size() - 1].MC_Movimiento.Destino == J_jugadas[J_jugadas.size() - 3].MC_Movimiento.Origen &&
-                            J_jugadas[J_jugadas.size() - 3].MC_Movimiento.Origen == J_jugadas[J_jugadas.size() - 5].MC_Movimiento.Destino)
+                        if (J_jugadas[J_jugadas.size() - 1].J_movimiento.MC_Movimiento.Destino == J_jugadas[J_jugadas.size() - 3].J_movimiento.MC_Movimiento.Origen &&
+							J_jugadas[J_jugadas.size() - 1].J_movimiento.MC_Movimiento.Origen == J_jugadas[J_jugadas.size() - 3].J_movimiento.MC_Movimiento.Destino &&
+                            J_jugadas[J_jugadas.size() - 3].J_movimiento.MC_Movimiento.Origen == J_jugadas[J_jugadas.size() - 5].J_movimiento.MC_Movimiento.Destino &&
+                            J_jugadas[J_jugadas.size() - 3].J_movimiento.MC_Movimiento.Destino == J_jugadas[J_jugadas.size() - 5].J_movimiento.MC_Movimiento.Origen &&
+							J_jugadas[J_jugadas.size() - 3].bandoBlancas == J_jugadas[J_jugadas.size() - 5].bandoBlancas &&
+							J_jugadas[J_jugadas.size() - 3].tipoPieza == J_jugadas[J_jugadas.size() - 5].tipoPieza &&
+							J_jugadas[J_jugadas.size() - 3].indiceBando == J_jugadas[J_jugadas.size() - 5].indiceBando)
                         {
                             return true;
                         }
@@ -2254,7 +2295,7 @@ namespace ChessExtreem
             }
 			else if (fncRepeticionTresMovimientos()) // Tercera comprobación si se han realizado tres movimientos repetidos
 			{
-				J_estado.setEstado(Estado::Tablas);
+				J_estado.setEstado(Estado::RepeticionTriple);
 				
 			}
 

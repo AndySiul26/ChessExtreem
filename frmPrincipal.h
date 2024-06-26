@@ -191,6 +191,13 @@ namespace Chess {
 		   {
 			   return Casilla(c.x, c.y);
 		   }
+
+		   Label^ Casilla(bool blancas, const TipoPieza tipo, int indice)
+		   {
+			   auto& bando = juegoGeneral.ObtenerBando(blancas);
+			   Coordenadas c = bando[tipo][indice];
+			   return Casilla(c.x, c.y);
+		   }
 		   
 		   Coordenadas ObtenerCoordenadasTableroCasilla(Label^ casilla)
 		   {
@@ -198,26 +205,84 @@ namespace Chess {
 			   return std::move(Coordenadas{ datos->x,datos->y });
 		   }
 		   
+		   void ActualizarImagenCasilla(Label^ casilla, String^ key)
+		   {
+			   auto datos = ObtenerDatosTag(casilla);
+			   auto c{ std::move(Coordenadas{ datos->x, datos->y }) };
+
+			   if (casilla->BackColor != Color::Transparent) casilla->BackColor = Color::Transparent; // Dejar color transparente			   
+			   if (casilla->ImageKey == key && !datos->conEfecto) return; // Innecesario actualizar
+
+			   casilla->ImageKey = key;
+			   casilla->ImageList = f_Piezas;
+			   //casilla->Image = f_Piezas->Images[casilla->ImageKey];
+		   }
+
 		   void ActualizarImagenCasilla(Coordenadas&& c)
 		   {
-			   int x{ c.x }, y{ c.y };
-			   auto datos = ObtenerDatosTag(Casilla(c));
-			   if (Casilla(x, y)->BackColor != Color::Transparent) Casilla(x, y)->BackColor = Color::Transparent; // Dejar color transparente
-			   if (Casilla(x, y)->ImageKey == KeyPieza(x, y) && !datos->conEfecto) return; // Innecesario actualizar
+			   int x{ c.x }, y{ c.y };			   
+			   auto casilla = Casilla(x, y);
+			   String^ key = KeyPieza(x, y);
 
-			   Casilla(x, y)->ImageKey = KeyPieza(x, y);
-			   Casilla(x, y)->Image = f_Piezas->Images[Casilla(x,y)->ImageKey];
+			   ActualizarImagenCasilla(casilla, key);
 		   }
 
 		   void ActualizarImagenCasilla(Coordenadas&& c, int indexOtroJuego)
 		   {
 			   int x{ c.x }, y{ c.y };
-			   auto datos = ObtenerDatosTag(Casilla(c));
-			   if (Casilla(x, y)->BackColor != Color::Transparent) Casilla(x, y)->BackColor = Color::Transparent; // Dejar color transparente
-			   if (Casilla(x, y)->ImageKey == KeyPieza(x, y, indexOtroJuego) && !datos->conEfecto ) return; // Innecesario actualizar
+			   auto casilla = Casilla(x, y);
+			   String^ key = KeyPieza(x, y, indexOtroJuego);
 
-			   Casilla(x, y)->ImageKey = KeyPieza(x, y, indexOtroJuego);
-			   Casilla(x, y)->Image = f_Piezas->Images[KeyPieza(x, y, indexOtroJuego)];
+			   ActualizarImagenCasilla(casilla, key);
+		   }
+
+
+		   void EfectosEstadoJuego()
+		   {
+			   if (juegoGeneral.obtenerEstado().getEstado() == Estado::JaqueBlancas)
+			   {
+				   // Para mostrar el efecto de Jaque a las blancas cambiaremos a su imagen correspondiente del label
+				   Label^ label = Casilla(true, TipoPieza::Rey, 0); // Obtenemos al unico rey blanco en la casilla (label) en la que se encuentra
+				   label->ImageKey = "RBJ";
+			   }
+			   else if (juegoGeneral.obtenerEstado().getEstado() == Estado::JaqueNegras)
+			   {
+				   // Para mostrar el efecto de Jaque a las negras cambiaremos a su imagen correspondiente del label
+				   Label^ label = Casilla(false, TipoPieza::Rey, 0); // Obtenemos al unico rey negro en la casilla (label) en la que se encuentra
+				   label->ImageKey = "RNJ";
+			   }
+		   }
+
+		   void OperacionesSegunEstadoJuego()
+		   {
+			   EfectosEstadoJuego();
+
+			   // Revisar estado del juego
+			   if (juegoGeneral.EsJuegoTerminado())
+			   {
+				   switch (juegoGeneral.obtenerEstado().getEstado())
+				   {
+				   case Estado::JaqueMateBlancas:
+					   MessageBox::Show("Jaque Mate Blancas");
+					   break;
+				   case Estado::JaqueMateNegras:
+					   MessageBox::Show("Jaque Mate Negras");
+					   break;
+				   case Estado::Tablas:
+					   MessageBox::Show("Tablas");
+					   break;
+				   case Estado::RepeticionTriple:
+					   MessageBox::Show("Repeticion Triple");
+					   break;
+				   case Estado::Ahogado:
+					   MessageBox::Show("Ahogado");
+					   break;
+				   default:
+					   break;
+				   }
+				   MessageBox::Show("Juego terminado");
+			   }
+
 		   }
 
 		   // Actualiza la visualización del tablero en la interfaz segun el tableroGeneral del juego
@@ -267,6 +332,9 @@ namespace Chess {
 
 				   ModoConsola::ImprimirTablero(std::move(juegoGeneral));
 			   }
+
+			   OperacionesSegunEstadoJuego();
+			  
 		   }
 
 		   void ActualizarTableroInterfaz()
@@ -302,8 +370,10 @@ namespace Chess {
 			   Console::WriteLine("Creando juego...");
 			   juegoGeneral.CrearJuego();
 			   // Poner invisible la casilla base
+			   Point^ baseLocation = f_Casilla->Location;
+
 			   f_Casilla->Parent = f_Tablero;
-			   f_Casilla->Location = Point(104 - f_Tablero->Location.X, 551 - f_Tablero->Location.Y);
+			   f_Casilla->Location = Point(baseLocation->X - f_Tablero->Location.X, baseLocation->Y - f_Tablero->Location.Y);
 			   f_Casilla->Visible = false;
 
 			   int rows = 8;
@@ -338,7 +408,6 @@ namespace Chess {
 			   this->ResumeLayout(false);
 		   }
 
-		   
 
 	protected:
 
@@ -370,7 +439,7 @@ namespace Chess {
 			// f_Tablero
 			// 
 			this->f_Tablero->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"f_Tablero.Image")));
-			this->f_Tablero->Location = System::Drawing::Point(60, 60);
+			this->f_Tablero->Location = System::Drawing::Point(63, 144);
 			this->f_Tablero->Name = L"f_Tablero";
 			this->f_Tablero->Size = System::Drawing::Size(600, 600);
 			this->f_Tablero->SizeMode = System::Windows::Forms::PictureBoxSizeMode::StretchImage;
@@ -403,7 +472,7 @@ namespace Chess {
 			this->f_Casilla->BackColor = System::Drawing::Color::Transparent;
 			this->f_Casilla->ImageIndex = 3;
 			this->f_Casilla->ImageList = this->f_Piezas;
-			this->f_Casilla->Location = System::Drawing::Point(103, 552);
+			this->f_Casilla->Location = System::Drawing::Point(107, 636);
 			this->f_Casilla->Name = L"f_Casilla";
 			this->f_Casilla->Size = System::Drawing::Size(64, 64);
 			this->f_Casilla->TabIndex = 1;
@@ -419,9 +488,10 @@ namespace Chess {
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-			this->ClientSize = System::Drawing::Size(734, 711);
+			this->ClientSize = System::Drawing::Size(734, 868);
 			this->Controls->Add(this->f_Casilla);
 			this->Controls->Add(this->f_Tablero);
+			this->StartPosition = FormStartPosition::CenterScreen;
 			this->MaximizeBox = false;
 			this->Name = L"frmPrincipal";
 			this->Text = L"frmPrincipal";
@@ -445,7 +515,8 @@ namespace Chess {
 
 	private: System::Void frmPrincipal_Click(System::Object^ sender, System::EventArgs^ e) {
 		Console::WriteLine("Click fondo...");
-
+		MessageBox::Show("Click fondo...");
+		
 		SelectorPieza^ frm_Selector = gcnew SelectorPieza((juegoGeneral.obtenerEstado().esTurnoBlancas()) ? L"B": L"N");
 		frm_Selector->EnviarDatos += gcnew System::EventHandler<System::String^>(this, &Chess::frmPrincipal::RecepcionPiezaSelector);
 		frm_Selector->ShowDialog();
@@ -599,44 +670,7 @@ private:
 		}
 
 		Label^ label{ safe_cast<Label^>(sender) };
-		/*if (!label->Tag)
-		{
-			label->Tag = true;
-			AdjustBrightness(safe_cast<Label^>(sender), .5);
-		}
-		else
-		{			
-
-			label->Tag = nullptr;
-			AdjustBrightness(safe_cast<Label^>(sender), 1);
-		}*/
-
-	/*	if (!label->Tag)
-		{
-			label->Tag = true;
-			label->ImageKey = "";
-		}
-		else
-		{			
-			label->Tag = nullptr;
-			label->ImageKey = L"AB";
-		}*/
-		
-		/*if (!label->Tag)
-		{
-			label->Tag = true;
-			ChangeImageTone(label, 10,30,120);
-		}
-		else
-		{
-
-			label->Tag = nullptr;
-			ChangeImageTone(label, -10,-30,-120);			
-		}*/
-
-			
-		// HighlightEdges(label, Color::FromArgb(255,10,10,10));
-
+	
 		CasillaDatosTag^ datos = dynamic_cast<CasillaDatosTag^>(label->Tag);
 		
 		auto& pieza = juegoGeneral[datos->x][datos->y];
