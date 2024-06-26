@@ -1,0 +1,69 @@
+  Chess.frmPrincipal.resources - Embedded, ContainedInManifestFile, 
+  Chess.SelectorPieza.resources - Embedded, ContainedInManifestFile, 
+ImageRuntimeVersion: v4.0.30319
+Assembly Chess, Version=0.0.*, Culture=Todos los idiomas (todos los países): 
+	hash=SHA1, flags=PublicKey
+Assembly mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089: 
+	hash=None, flags=None
+Assembly System.Data, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089: 
+	hash=None, flags=None
+Assembly System, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089: 
+	hash=None, flags=None
+Assembly System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a: 
+	hash=None, flags=None
+Assembly System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089: 
+	hash=None, flags=None
+Assembly System.Xml, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089: 
+	hash=None, flags=None
+Class Chess.CasillaDatosTag: AutoLayout, AnsiClass, Class, Public, BeforeFieldInit
+    Void .ctor(Int32, Int32): PrivateScope, Public, HideBySig, SpecialName, RTSpecialName
+    Void .ctor(Int32, Int32, Boolean, Boolean): PrivateScope, Public, HideBySig, SpecialName, RTSpecialName
+  Fields:
+    Int32 x : Public
+    Int32 y : Public
+    Boolean seleccionada : Public
+    Boolean conEfecto : Public
+Class Chess.ChessException: AutoLayout, AnsiClass, Class, Public, BeforeFieldInit
+  :System.Exception
+    Void .ctor(System.String, Chess.ChessInterfazError): PrivateScope, Public, HideBySig, SpecialName, RTSpecialName
+  Properties:
+    Chess.ChessInterfazError ErrorCode 'get ' : 
+  Methods:
+    get_ErrorCode(): PrivateScope, Public, HideBySig, SpecialName
+Class Chess.DatosCoronacion: AutoLayout, AnsiClass, Class, Public, BeforeFieldInit
+    Void .ctor(ChessExtreem.TipoPieza, Boolean): PrivateScope, Public, HideBySig, SpecialName, RTSpecialName
+  Properties:
+    Boolean Validado 'get set' : 
+    ChessExtreem.TipoPieza TipoPiezaCoronacion 'get set' : 
+  Methods:
+    set_TipoPiezaCoronacion(TipoPieza): PrivateScope, Public, HideBySig, SpecialName
+    get_TipoPiezaCoronacion(): PrivateScope, Public, HideBySig, SpecialName
+    set_Validado(Boolean(HasFieldMarshal)): PrivateScope, Public, HideBySig, SpecialName
+    get_Validado(): PrivateScope, Public, HideBySig, SpecialName
+Class Chess.SelectorPieza: AutoLayout, AnsiClass, Class, Public, BeforeFieldInit
+  :System.Windows.Forms.Form
+    Void .ctor(System.String): PrivateScope, Public, HideBySig, SpecialName, RTSpecialName
+    Void .ctor(): PrivateScope, Public, HideBySig, SpecialName, RTSpecialName
+  Events:
+    System.EventHandler`1[System.String] EnviarDatos: SpecialName
+  Methods:
+    add_EnviarDatos(EventHandler`1): PrivateScope, Public, HideBySig, SpecialName
+    remove_EnviarDatos(EventHandler`1): PrivateScope, Public, HideBySig, SpecialName
+Class Chess.frmPrincipal: AutoLayout, AnsiClass, Class, Public, BeforeFieldInit
+  :System.Windows.Forms.Form
+    Void .ctor(): PrivateScope, Public, HideBySig, SpecialName, RTSpecialName
+Struct Chess.CasillaDestino: AutoLayout, AnsiClass, Class, Public, Sealed, BeforeFieldInit
+  :System.Enum
+  Fields:
+    Int32 value__ : Public, SpecialName, RTSpecialName
+    Chess.CasillaDestino SinValidacion = 0 : Public, Static, Literal, HasDefault
+    Chess.CasillaDestino Libre = 1 : Public, Static, Literal, HasDefault
+    Chess.CasillaDestino Captura = 2 : Public, Static, Literal, HasDefault
+    Chess.CasillaDestino Coronacion = 3 : Public, Static, Literal, HasDefault
+    Chess.CasillaDestino Compuesto = 4 : Public, Static, Literal, HasDefault
+Struct Chess.ChessInterfazError: AutoLayout, AnsiClass, Class, Public, Sealed, BeforeFieldInit
+  :System.Enum
+  Fields:
+    Int32 value__ : Public, SpecialName, RTSpecialName
+    Chess.ChessInterfazError Ninguno = 0 : Public, Static, Literal, HasDefault
+    Chess.ChessInterfazError LabelsNoCargados = 1 : Public, Static, Literal, HasDefault
