@@ -12,6 +12,10 @@
 #include<unordered_map> // Incluir la librería necesaria para std::unordered_map
 #include <functional>
 #include <thread>
+#include <chrono> // Incluir la librería necesaria para std::chrono
+#include <atomic> 
+#include <mutex> // Incluir la librería necesaria para std::mutex
+
 #include "solucionar.h"
 
 namespace ChessExtreem
@@ -31,6 +35,7 @@ namespace ChessExtreem
         Valido_CapturaPiezaEnemiga,         // El movimiento es válido, captura una pieza enemiga
         Valido_MovimientoCompuesto,         // El movimiento es válido, se mueve junto con otra pieza
         Valido_Coronacion,                  // El movimiento es válido, es peon y se corona
+		Prohibido_FueraDeTablero,            // La posición destino no es válida ni aprobada por movimientos básicos
         Prohibido_MovimientoAunNoValidado,	// El movimiento no ha sido validado aún
         Prohibido_NoHayPiezaEnOrigen,       // Cuando se señala un cuadro vacío para mover 
         Prohibido_PiezaMismoBando,	        // La pieza destino es del mismo bando
@@ -163,6 +168,7 @@ namespace ChessExtreem
             {
             case ChessExtreem::ValidacionMovimiento::Prohibido_PosicionObstruida:
             case ChessExtreem::ValidacionMovimiento::Prohibido_PiezaMismoBando:
+
             case ChessExtreem::ValidacionMovimiento::Valido_CapturaPiezaEnemiga:
                 return true;
             default:
@@ -187,6 +193,7 @@ namespace ChessExtreem
             case ChessExtreem::ValidacionMovimiento::Prohibido_ReyEnJaque:
             case ChessExtreem::ValidacionMovimiento::Prohibido_PosicionObstruida:
             case ChessExtreem::ValidacionMovimiento::Prohibido_PosicionLibrePeroInvalida:
+			case ChessExtreem::ValidacionMovimiento::Prohibido_FueraDeTablero:
                 V_Valido = false;
                 break;
             default:
@@ -228,6 +235,7 @@ namespace ChessExtreem
             return Coordenadas{ abs(x) ,abs(y) };
         }
 
+
 		// Operadores de asignación
         Coordenadas operator+(const Coordenadas& c1) const;
         Coordenadas operator-(const Coordenadas& c1) const;
@@ -235,6 +243,7 @@ namespace ChessExtreem
         Coordenadas operator*(int escalar) const;
         Coordenadas operator/(const Coordenadas& c1) const;
         Coordenadas operator/(int escalar) const;
+		
     };
 
     // Sobrecarga de operadores para Coordenadas
@@ -270,6 +279,8 @@ namespace ChessExtreem
         return { x / escalar, y / escalar };
     }
 
+    const Coordenadas CoordenadasNulas{ -1, -1 };
+
     // Cambiar a movimiento compuesto (crear clase Movimiento solo debe tener origen y destino encapsulando coordenadas origen destino en esa clase)
     // CAMBIAR LOGICA...
 
@@ -277,6 +288,46 @@ namespace ChessExtreem
     {
         Coordenadas Origen;
         Coordenadas Destino;
+
+		Movimiento() : Origen{ -1, -1 }, Destino{ -1, -1 } {}
+
+		Movimiento(const Coordenadas& origen, const Coordenadas& destino) : Origen{ origen }, Destino{ destino } {}
+
+        Movimiento(std::initializer_list<int> initList) {
+			if (initList.size() != 4) {
+				throw std::invalid_argument("Se requieren exactamente cuatro valores para inicializar Movimiento.");
+			}
+
+			auto it = initList.begin();
+			Origen.x = *it;
+			Origen.y = *(it + 1);
+			Destino.x = *(it + 2);
+			Destino.y = *(it + 3);
+        }
+
+		Movimiento(const Movimiento& otro) noexcept
+			: Origen{ otro.Origen }, Destino{ otro.Destino } {}
+
+		Movimiento(Movimiento&& otro) noexcept
+			: Origen{ std::move(otro.Origen) }, Destino{ std::move(otro.Destino) } {}
+
+        Movimiento Invertir() const
+        {
+            return { Destino, Origen };
+        }
+
+		Movimiento& operator=(const Movimiento& otro) noexcept {
+			Origen = otro.Origen;
+			Destino = otro.Destino;
+			return *this;
+		}
+
+		Movimiento& operator=(Movimiento&& otro) noexcept {
+			Origen = std::move(otro.Origen);
+			Destino = std::move(otro.Destino);
+			return *this;
+        }
+
         // Sobrecarga de operadores para Coordenadas
         friend bool operator==(const Movimiento& c1, const Movimiento& c2) {
             return c1.Origen == c2.Origen && c1.Destino == c2.Destino; // Corrección
@@ -284,6 +335,30 @@ namespace ChessExtreem
 
         friend bool operator!=(const Movimiento& c1, const Movimiento& c2) {
             return !(c1 == c2); // Corrección
+        }
+
+		Movimiento operator+(const Movimiento& c1) const {
+			return { Origen + c1.Origen, Destino + c1.Destino };
+		}
+
+		Movimiento operator-(const Movimiento& c1) const {
+			return { Origen - c1.Origen, Destino - c1.Destino };
+        }
+
+		Movimiento operator*(const Movimiento& c1) const {
+			return { Origen * c1.Origen, Destino * c1.Destino };
+		}
+
+        Movimiento operator*(int escalar) const {
+			return { Origen * escalar, Destino * escalar };
+        }
+
+        Movimiento operator/(const Movimiento& c1) const {
+			return { Origen / c1.Origen, Destino / c1.Destino };
+        }
+
+        Movimiento operator/(int escalar) const {
+			return { Origen / escalar, Destino / escalar };
         }
     };
 
@@ -741,8 +816,8 @@ namespace ChessExtreem
                     int nx = P_posicion.x + i * (dx / 2);
                     int ny = P_posicion.y;
 
-                    MovimientoCompuesto movimiento{ { P_posicion, {nx, ny} }, {}, true,
-                        (dx > 0 ? TipoMovimientoEspecial::ReyEnroqueCorto : TipoMovimientoEspecial::ReyEnroqueLargo) };
+					MovimientoCompuesto movimiento{ { P_posicion, {nx, ny} }, {}, true, TipoMovimientoEspecial::Nulo };
+                        
 
                     if (fncValidador) {
                         fncValidador(movimiento);
@@ -912,9 +987,9 @@ namespace ChessExtreem
     // Define la clase EstadoJuego para representar el estado del juego
     class EstadoJuego {
     private:
-        Estado EJ_estado;
-        TipoBando EJ_turno;
-        bool EJ_Cambiado;
+        Estado EJ_estado{Estado::SinInicializar};
+        TipoBando EJ_turno{ TipoBando::Nulo };
+        bool EJ_Cambiado{ false };
 
     protected:
         void setTurno(TipoBando bando) { EJ_turno = bando; }
@@ -934,12 +1009,29 @@ namespace ChessExtreem
         friend class Juego;
 
     public:
+
         // Constructor por defecto
         EstadoJuego() : EJ_estado(Estado::SinInicializar), EJ_turno{ TipoBando::Nulo }, EJ_Cambiado{ false } {}
+
+		EstadoJuego(Estado estado, TipoBando turno, bool cambiado = false)
+			: EJ_estado{ estado }, EJ_turno{ turno }, EJ_Cambiado{ cambiado } {}
+
+		EstadoJuego(const EstadoJuego& otroEstado)
+			: EJ_estado{ otroEstado.EJ_estado }, EJ_turno{ otroEstado.EJ_turno }, EJ_Cambiado{ otroEstado.EJ_Cambiado } {}
 
         Estado getEstado() const {
             return EJ_estado;
         }
+
+		EstadoJuego operator=(const EstadoJuego& otroEstado)
+		{
+			if (this != &otroEstado) {
+				EJ_estado = otroEstado.EJ_estado;
+				EJ_turno = otroEstado.EJ_turno;
+				EJ_Cambiado = otroEstado.EJ_Cambiado;
+			}
+			return *this;
+		}
 
 		bool esActivo() const {
             switch (EJ_estado)
@@ -1026,13 +1118,13 @@ namespace ChessExtreem
         CadenaCoordenadas B_alfiles;
         CadenaCoordenadas B_torres;
 
-        int B_cantidadPiezas{ 0 };
-        int B_cantidadReyes{ 0 };
-        int B_cantidadDamas{ 0 };
-		int B_cantidadPeones{ 0 };
-		int B_cantidadCaballos{ 0 };
-		int B_cantidadAlfiles{ 0 };
-		int B_cantidadTorres{ 0 };
+        std::atomic<int> B_cantidadPiezas{ 0 };
+        std::atomic<int> B_cantidadReyes{ 0 };
+        std::atomic<int> B_cantidadDamas{ 0 };
+        std::atomic<int> B_cantidadPeones{ 0 };
+        std::atomic<int> B_cantidadCaballos{ 0 };
+        std::atomic<int> B_cantidadAlfiles{ 0 };
+        std::atomic<int> B_cantidadTorres{ 0 };        
 
     public:
         CadenaCoordenadasRef B_piezas;
@@ -1048,16 +1140,41 @@ namespace ChessExtreem
             B_alfiles = otroBando.B_alfiles;
             B_torres = otroBando.B_torres;
 
-			B_cantidadAlfiles = otroBando.B_cantidadAlfiles;
-			B_cantidadCaballos = otroBando.B_cantidadCaballos;
-			B_cantidadDamas = otroBando.B_cantidadDamas;
-			B_cantidadPeones = otroBando.B_cantidadPeones;
-			B_cantidadReyes = otroBando.B_cantidadReyes;
-			B_cantidadTorres = otroBando.B_cantidadTorres;
-			B_cantidadPiezas = otroBando.B_cantidadPiezas;
+            B_cantidadAlfiles.store(otroBando.B_cantidadAlfiles.load());
+            B_cantidadCaballos.store(otroBando.B_cantidadCaballos.load());
+            B_cantidadDamas.store(otroBando.B_cantidadDamas.load());
+            B_cantidadPeones.store(otroBando.B_cantidadPeones.load());
+            B_cantidadReyes.store(otroBando.B_cantidadReyes.load());
+            B_cantidadTorres.store(otroBando.B_cantidadTorres.load());
+            B_cantidadPiezas.store(otroBando.B_cantidadPiezas.load());
 
             CorresponderPiezas();
         }
+
+		Bando& operator=(const Bando& otroBando)
+		{
+			if (this != &otroBando) {
+				B_bandoBlancas = otroBando.B_bandoBlancas;
+
+				B_reyes = otroBando.B_reyes;
+				B_damas = otroBando.B_damas;
+				B_peones = otroBando.B_peones;
+				B_caballos = otroBando.B_caballos;
+				B_alfiles = otroBando.B_alfiles;
+				B_torres = otroBando.B_torres;
+
+				B_cantidadAlfiles.store(otroBando.B_cantidadAlfiles.load());
+				B_cantidadCaballos.store(otroBando.B_cantidadCaballos.load());
+				B_cantidadDamas.store(otroBando.B_cantidadDamas.load());
+				B_cantidadPeones.store(otroBando.B_cantidadPeones.load());
+				B_cantidadReyes.store(otroBando.B_cantidadReyes.load());
+				B_cantidadTorres.store(otroBando.B_cantidadTorres.load());
+				B_cantidadPiezas.store(otroBando.B_cantidadPiezas.load());
+
+				CorresponderPiezas();
+			}
+			return *this;
+		}
 
         void CorresponderPiezas() {
             B_piezas.clear();
@@ -1162,32 +1279,32 @@ namespace ChessExtreem
 			CorresponderPiezas();
         }
 
-		void IncrementarContadores(const TipoPieza tipo)
-		{
-			++B_cantidadPiezas;
-			switch (tipo) {
-			case TipoPieza::Torre:
-				++B_cantidadTorres;
-				break;
-			case TipoPieza::Caballo:
-				++B_cantidadCaballos;
-				break;
-			case TipoPieza::Alfil:
-				++B_cantidadAlfiles;
-				break;
-			case TipoPieza::Dama:
-				++B_cantidadDamas;
-				break;
-			case TipoPieza::Rey:
-				++B_cantidadReyes;
-				break;
-			case TipoPieza::Peon:
-				++B_cantidadPeones;
-				break;
-			default:
-				break;
-			}
-		}
+        void IncrementarContadores(const TipoPieza tipo)
+        {
+            B_cantidadPiezas.fetch_add(1, std::memory_order_relaxed);
+            switch (tipo) {
+            case TipoPieza::Torre:
+                B_cantidadTorres.fetch_add(1, std::memory_order_relaxed);
+                break;
+            case TipoPieza::Caballo:
+                B_cantidadCaballos.fetch_add(1, std::memory_order_relaxed);
+                break;
+            case TipoPieza::Alfil:
+                B_cantidadAlfiles.fetch_add(1, std::memory_order_relaxed);
+                break;
+            case TipoPieza::Dama:
+                B_cantidadDamas.fetch_add(1, std::memory_order_relaxed);
+                break;
+            case TipoPieza::Rey:
+                B_cantidadReyes.fetch_add(1, std::memory_order_relaxed);
+                break;
+            case TipoPieza::Peon:
+                B_cantidadPeones.fetch_add(1, std::memory_order_relaxed);
+                break;
+            default:
+                break;
+            }
+        }
 
         void CrearBando(TableroAjedrez& tablero)
         {
@@ -1259,61 +1376,97 @@ namespace ChessExtreem
 		}
 
         // Retorna la cantidad total de piezas
-		int CantidadPiezas() const { return B_cantidadPiezas; }
+        int CantidadPiezas() const { return B_cantidadPiezas.load(std::memory_order_relaxed); }
 
         int CantidadPiezas(TipoPieza tipo) const
-        {            
-            // Retorna la cantidad de piezas del tipo especificado          
-			switch (tipo) {
-			case TipoPieza::Torre:
-				return B_cantidadTorres;
-			case TipoPieza::Caballo:
-				return B_cantidadCaballos;
-			case TipoPieza::Alfil:
-				return B_cantidadAlfiles;
-			case TipoPieza::Dama:
-				return B_cantidadDamas;
-			case TipoPieza::Rey:
-				return B_cantidadReyes;
-			case TipoPieza::Peon:
-				return B_cantidadPeones;
-			default:
-				throw std::invalid_argument("Tipo de pieza no válido.");
-			}
+        {
+            switch (tipo) {
+            case TipoPieza::Torre:
+                return B_cantidadTorres.load(std::memory_order_relaxed);
+            case TipoPieza::Caballo:
+                return B_cantidadCaballos.load(std::memory_order_relaxed);
+            case TipoPieza::Alfil:
+                return B_cantidadAlfiles.load(std::memory_order_relaxed);
+            case TipoPieza::Dama:
+                return B_cantidadDamas.load(std::memory_order_relaxed);
+            case TipoPieza::Rey:
+                return B_cantidadReyes.load(std::memory_order_relaxed);
+            case TipoPieza::Peon:
+                return B_cantidadPeones.load(std::memory_order_relaxed);
+            default:
+                throw std::invalid_argument("Tipo de pieza no válido.");
+            }
         }
 
-		void ActualizarPosicionPieza(TipoPieza tipo, int indice, const Coordenadas& nuevaPosicion)
+        void ActualizarPosicionPieza(TipoPieza tipo, int indice, const Coordenadas& nuevaPosicion)
         {
-			operator[](tipo)[indice] = nuevaPosicion;
-			if (nuevaPosicion == Coordenadas{ -1, -1 }) {
-				--B_cantidadPiezas;
+            operator[](tipo)[indice] = nuevaPosicion;
+            if (nuevaPosicion == Coordenadas{ -1, -1 }) {
+                B_cantidadPiezas.fetch_sub(1, std::memory_order_relaxed);
                 switch (tipo) {
-				case TipoPieza::Torre:
-					--B_cantidadTorres;
-					break;
-				case TipoPieza::Caballo:
-					--B_cantidadCaballos;
-					break;
-				case TipoPieza::Alfil:
-					--B_cantidadAlfiles;
-					break;
-				case TipoPieza::Dama:
-					--B_cantidadDamas;
-					break;
-				case TipoPieza::Rey:
-					--B_cantidadReyes;
-					break;
-				case TipoPieza::Peon:
-					--B_cantidadPeones;
-					break;
-				default:
-					break;
-				}
+                case TipoPieza::Torre:
+                    B_cantidadTorres.fetch_sub(1, std::memory_order_relaxed);
+                    break;
+                case TipoPieza::Caballo:
+                    B_cantidadCaballos.fetch_sub(1, std::memory_order_relaxed);
+                    break;
+                case TipoPieza::Alfil:
+                    B_cantidadAlfiles.fetch_sub(1, std::memory_order_relaxed);
+                    break;
+                case TipoPieza::Dama:
+                    B_cantidadDamas.fetch_sub(1, std::memory_order_relaxed);
+                    break;
+                case TipoPieza::Rey:
+                    B_cantidadReyes.fetch_sub(1, std::memory_order_relaxed);
+                    break;
+                case TipoPieza::Peon:
+                    B_cantidadPeones.fetch_sub(1, std::memory_order_relaxed);
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+
+		void CambiarTipoPieza(TipoPieza tipo, int indice, TipoPieza nuevoTipo, Coordenadas coordenadas = CoordenadasNulas)
+        {
+            if (coordenadas == CoordenadasNulas) 
+			    coordenadas = operator[](tipo)[indice];
+
+			// operator[](tipo).erase(operator[](tipo).begin() + indice); Si se borran las coordenadas desajusta los indices
+			// En su lugar se establece la coordenada en -1, -1 (coordenadas nulas)
+			ActualizarPosicionPieza(tipo, indice, Coordenadas{ -1, -1 });
+
+
+            switch (nuevoTipo) {
+			case TipoPieza::Torre:
+				B_torres.push_back(coordenadas);
+
+				break;
+			case TipoPieza::Caballo:
+				B_caballos.push_back(coordenadas);
+				break;
+			case TipoPieza::Alfil:
+				B_alfiles.push_back(coordenadas);
+				break;
+			case TipoPieza::Dama:
+				B_damas.push_back(coordenadas);
+				break;
+			case TipoPieza::Rey:
+				B_reyes.push_back(coordenadas);
+				break;
+			case TipoPieza::Peon:
+				B_peones.push_back(coordenadas);
+				break;
+			default:
+				break;
 			}
+
+			IncrementarContadores(nuevoTipo);
+            CorresponderPiezas();
 		}
 
-
-    };
+};
 
 
     struct Jugada {
@@ -1333,11 +1486,21 @@ namespace ChessExtreem
     // Define la clase Juego para representar el juego de ajedrez
     class Juego {
     private:
-
-		const Coordenadas CoordenadasNulas{ -1, -1 };
+		mutable std::mutex J_mutex; // Mutex para controlar las operaciones concurrentes 
+		std::shared_ptr<Juego> J_copiaJuego;		
 
         TableroAjedrez J_tablero;
         std::shared_ptr<Pieza> casillaNula;
+
+		void ActualizarCopiaJuego() {
+			std::lock_guard<std::mutex> lock(J_mutex);            
+
+			if (!J_copiaJuego)
+				J_copiaJuego = std::make_shared<Juego>(*this);
+			else
+				*J_copiaJuego = *this;
+			
+		}
 
         // Definición del método convertirPieza
         std::shared_ptr<Pieza> convertirPieza(const std::shared_ptr<Pieza>& piezaOriginal, TipoPieza tipoDestino) {
@@ -1373,8 +1536,9 @@ namespace ChessExtreem
         }
 
 		void ConvertirPiezaEnTablero(const Coordenadas& coordenadas, TipoPieza tipoDestino) {
-			auto& PiezaOriginal = J_tablero[coordenadas.x][coordenadas.y];
-			if (!PiezaOriginal) return;
+			auto& PiezaOriginal = J_tablero[coordenadas.x][coordenadas.y]; // Obtenemos la pieza original en la posición
+			if (!PiezaOriginal) return; // No hay pieza en la posición
+			if (PiezaOriginal->obtenerTipo() == tipoDestino) return; // No se puede convertir a la misma pieza
 
 			auto& Bando = (PiezaOriginal->getBandoBlancas()) ? J_blancas : J_negras;
 			// Eliminamos la pieza del bando correspondiente para usar esa posición en el tablero con la nueva pieza construida (para coronación)
@@ -1426,8 +1590,8 @@ namespace ChessExtreem
 
             // Actualizar bandos correspondientes
             // Al poner coordenadas negativas, indica que la pieza ha sido eliminada del tablero
-            ActualizarCoordenadasBando(Movimiento{ destino, CoordenadasNulas });
-            ActualizarCoordenadasBando(Movimiento{ origen, destino });
+            ActualizarCoordenadasBando(Movimiento{ destino, CoordenadasNulas }); // Eliminar referencia de pieza antes de ahi, solo se elimina con coordenadas nulas
+			ActualizarCoordenadasBando(Movimiento{ origen, destino }); // Cambiar posición de referencia de pieza
 
             // Actualizar tablero
             // Movemos las piezas con punteros inteligentes entre sí
@@ -1582,11 +1746,24 @@ namespace ChessExtreem
                 || PosicionElesEnJaque(posicion, bando_blancas_pos);
         }
 
+        bool ValidarMovimientoDentroRangoTablero(MovimientoCompuesto& mov)
+        {
+			if (!SonCoordenadasValidas(mov.MC_Movimiento.Origen) || !SonCoordenadasValidas(mov.MC_Movimiento.Destino))
+			{
+				mov.MC_Validacion.setTipoValidacion(ValidacionMovimiento::Prohibido_FueraDeTablero);
+				return false;
+			}
+			return true;
+        }
+
         // Validaciones de Movimientos
         bool ValidarPosicionRelativaInicial(MovimientoCompuesto& mov)
-        {
+        {            
+
             auto& casilla_origen = ObtenerPieza(mov.MC_Movimiento.Origen);
             auto& casilla_destino = ObtenerPieza(mov.MC_Movimiento.Destino);
+
+            
 
             // Comprobación de si la casilla está vacia
             if (!casilla_destino)
@@ -1828,6 +2005,46 @@ namespace ChessExtreem
             }
         }
 
+		void RestaurarCopiaJuegoAntesDeMovimiento(const MovimientoCompuesto& mov)
+		{
+			if (!J_copiaJuego) return;
+
+			
+			auto movimiento = mov.MC_Movimiento.Invertir();
+			auto movimientoRel = mov.MC_MovimientoPiezaRelacionada.Invertir();
+
+			// Restauramos la copia del juego antes de realizar el movimiento para que pueda ser usada para cada validación
+			J_copiaJuego->P_MoverPieza(movimiento);
+
+			// Restauramos la pieza relacionada si es que existe
+			if (mov.MC_MovimientoPiezaRelacionada.Origen != CoordenadasNulas)
+			{
+                J_copiaJuego->P_MoverPieza(movimientoRel);
+			}
+
+			// Si es un movimiento de coronación, se debe eliminar la pieza coronada
+			if (mov.MC_Validacion.getTipoEspecial() == TipoMovimientoEspecial::PeonCoronacion)
+			{
+				// Se debe convertir a peon la pieza coronada
+				J_copiaJuego->ConvertirPiezaEnTablero(mov.MC_Movimiento.Origen, TipoPieza::Peon); // Se convierte en peon
+			}
+
+			// Si el movimiento eliminó una pieza, se debe restaurar
+			if (mov.MC_Validacion.getTipoValidacion() == ValidacionMovimiento::Valido_CapturaPiezaEnemiga)
+			{
+				// Se debe crear la pieza nuevamente en la posición de destino
+				auto piezaRestablecida = J_tablero[mov.MC_Movimiento.Destino.x][mov.MC_Movimiento.Destino.y]->clonar();				
+				J_copiaJuego->AgregarPiezaBando({ mov.MC_Movimiento.Destino, piezaRestablecida->obtenerTipo() }, piezaRestablecida);
+			}            
+
+		}
+
+		void AgregarPiezaBando(const Coordenadas_InfoExtra& cie, std::shared_ptr<Pieza>& pieza)
+        {
+			auto& bando = (pieza->getBandoBlancas()) ? J_blancas : J_negras;
+			bando.AgregarPieza(cie, J_tablero, pieza);
+		}
+
         bool ValidarPosicionReyFueraDeJaque(MovimientoCompuesto& mov)
         {
             if (!mov.MC_Validacion.getValido()) return false;
@@ -1835,16 +2052,30 @@ namespace ChessExtreem
             auto& casillaPieza = ObtenerPieza(mov.MC_Movimiento.Origen);
             bool bandoBlancas = casillaPieza->getBandoBlancas();
 
-            Juego copiaJuego{ *this };
+			// Establecemos el mutex para evitar que se modifique la copia del juego mientras se valida el movimiento
+			std::lock_guard <std::mutex> lock(J_mutex); 
 
-            
-            copiaJuego.P_MoverPieza(mov);
-            auto& bando = (bandoBlancas) ? copiaJuego.J_blancas : copiaJuego.J_negras;
+			
+			if (!J_copiaJuego) 
+            { 
+				ActualizarCopiaJuego();
+                return false;
+            }
+
+			// Realizamos el movimiento en la copia del juego
+            J_copiaJuego->P_MoverPieza(mov);
+			if (mov.MC_MovimientoPiezaRelacionada.Origen != CoordenadasNulas)
+            {
+				J_copiaJuego->P_MoverPieza(mov.MC_MovimientoPiezaRelacionada);
+			}
+            auto& bando = (bandoBlancas) ? J_copiaJuego->J_blancas : J_copiaJuego->J_negras;
 
             // Validamos que la posición actual del unico rey 0, no este en jaque
-            if (copiaJuego.PosicionEnJaque(bando[TipoPieza::Rey][0], bandoBlancas))
+            if (J_copiaJuego->PosicionEnJaque(bando[TipoPieza::Rey][0], bandoBlancas))
                 mov.MC_Validacion.setTipoValidacion(ValidacionMovimiento::Prohibido_ReyEnJaque);
-            
+
+			// Restauramos el juego original
+			RestaurarCopiaJuegoAntesDeMovimiento(mov);
             
             return mov.MC_Validacion.getValido();
         }
@@ -1857,6 +2088,7 @@ namespace ChessExtreem
 
         void ValidadorGeneralDeMovimientos(MovimientoCompuesto& movimiento)
         {
+			if (!ValidarMovimientoDentroRangoTablero(movimiento)) return;
             if (!ValidarPosicionRelativaInicial(movimiento)) return;
 
             auto& pieza = ObtenerPieza(movimiento.MC_Movimiento.Origen);
@@ -1938,9 +2170,21 @@ namespace ChessExtreem
 
         void CalcularTodosLosMovimientos()
         {
+			CalcularTodosLosMovimientosBando(true); // Bando Blancas
+			CalcularTodosLosMovimientosBando(false); // Bando Negras
+		}
+
+		// Calcular todos los movimientos de cada bando de forma concurrente
+		void CalcularTodosLosMovimientosConcurrente()
+		{
+			// No utilizar hasta que se separe cada hilo con su propio tablero o se use un mutex
 			std::thread t1(&Juego::CalcularTodosLosMovimientosBando, this, true);
 			std::thread t2(&Juego::CalcularTodosLosMovimientosBando, this, false);
-            
+			// PROVOCA ERRORES EN EL HEAP PORQUE NO SE PUEDE COMPARTIR EL TABLERO
+			// AL GUARDAR LOS MOVIMIENTOS DE CADA PIEZA EN EL TABLERO SE PRODUCE UN ERROR DE ASIGNACIÓN DE MEMORIA
+			// PORQUE SE ESTÁN COMPARTIENDO LOS PUNTEROS DE LAS PIEZAS ENTRE LOS DOS HILOS
+            // 
+			// Solución: Crear un tablero para cada hilo y al finalizar la ejecución de los hilos, copiar los tableros a J_tablero
             //CalcularTodosLosMovimientosBando(true); // Bando Blancas
             //CalcularTodosLosMovimientosBando(false); // Bando Negras
 
@@ -1955,6 +2199,8 @@ namespace ChessExtreem
 			for (auto& cie : bando.B_piezas) {
 				
                 auto& pieza = ObtenerPieza(cie);
+                if (!pieza) continue;
+
 				if (pieza->getMovimientos().size() > 0) return true;
 			}
 			return false;
@@ -1990,22 +2236,28 @@ namespace ChessExtreem
             Inicializar();
         }
 
+		void CopiarTableroDeOtroJuego(const Juego& otro)
+        {
+            for (size_t i = 0; i < J_tablero.size(); ++i) {
+                for (size_t j = 0; j < J_tablero[i].size(); ++j) {
+                    if (otro.J_tablero[i][j]) {
+						J_tablero[i][j] = std::move(otro.J_tablero[i][j]->clonar());
+						
+					}
+                    else {
+						J_tablero[i][j] = nullptr;
+					}
+				}
+			}
+		}
+
         // Constructor de copia
         Juego(const Juego& otro) {
             // Copiar el estado del juego
             J_estado = otro.J_estado;
 
             // Copiar el tablero
-            for (size_t i = 0; i < J_tablero.size(); ++i) {
-                for (size_t j = 0; j < J_tablero[i].size(); ++j) {
-                    if (otro.J_tablero[i][j]) {
-                        J_tablero[i][j] = otro.J_tablero[i][j]->clonar();
-                    }
-                    else {
-                        J_tablero[i][j] = nullptr;
-                    }
-                }
-            }
+			CopiarTableroDeOtroJuego(otro);
 
             // Copiar las instancias de Bando
             J_blancas = otro.J_blancas;
@@ -2019,7 +2271,7 @@ namespace ChessExtreem
             J_estado = std::move(otro.J_estado);
 
             // Mover el tablero
-            J_tablero = std::move(otro.J_tablero);
+			CopiarTableroDeOtroJuego(otro);
 
             // Mover las instancias de Bando
             J_blancas = std::move(otro.J_blancas);
@@ -2034,16 +2286,7 @@ namespace ChessExtreem
                 J_estado = otro.J_estado;
 
                 // Copiar el tablero
-                for (size_t i = 0; i < J_tablero.size(); ++i) {
-                    for (size_t j = 0; j < J_tablero[i].size(); ++j) {
-                        if (otro.J_tablero[i][j]) {
-                            J_tablero[i][j] = otro.J_tablero[i][j]->clonar();
-                        }
-                        else {
-                            J_tablero[i][j] = nullptr;
-                        }
-                    }
-                }
+				CopiarTableroDeOtroJuego(otro);
 
                 // Copiar las instancias de Bando
                 J_blancas = otro.J_blancas;
@@ -2055,11 +2298,12 @@ namespace ChessExtreem
 
         // Operador de asignación de movimiento
         Juego& operator=(Juego&& otro) noexcept {
+			if (this == &otro) return *this;
             // Mover el estado del juego
             J_estado = std::move(otro.J_estado);
 
             // Mover el tablero
-            J_tablero = std::move(otro.J_tablero);
+			CopiarTableroDeOtroJuego(otro);
 
             // Mover las instancias de Bando
 		
@@ -2103,6 +2347,7 @@ namespace ChessExtreem
 
             J_estado.setEstado(Estado::Activo);
             J_estado.setTurno(TipoBando::Blancas);
+            ActualizarCopiaJuego();
 
         }
 
@@ -2169,14 +2414,12 @@ namespace ChessExtreem
                 break;
             }
 
-                    
-            
-
             // pieza->LimpiarMovimientosPosibles(); // Una vez que la pieza se mueva se debe eliminar sus movimientos calculados ya que no corresponden a su posición actual
             // Actualizar lista de movimientos realizados del juego
             J_jugadas.emplace_back(Jugada{mc, pieza->getBandoBlancas(), pieza->obtenerTipo(), pieza->GetIndiceBando()});
-
+			
 			AnalizarEstadoJuego();
+
             return true; // Llegar al final significa que se ha movido la pieza
         }
 
@@ -2202,8 +2445,11 @@ namespace ChessExtreem
             J_estado.cambiarTurno();
             LimpiarMovimientosValidadosPiezas(); 
 
+			// Se actualiza la copia del juego para que se pueda usar en las validaciones 
+            ActualizarCopiaJuego();
+
 			// Se calculan todos los movimientos posibles para saber el estado del juego
-            CalcularTodosLosMovimientos();
+            CalcularTodosLosMovimientosConcurrente();
 
             // Comprobar estado de jaque
             TipoBando Jaque = EsReyEnJaque(true) ? TipoBando::Blancas : EsReyEnJaque(false) ? TipoBando::Negras : TipoBando::Nulo;

@@ -57,6 +57,7 @@ namespace Chess {
 	private: System::Windows::Forms::Label^ f_Casilla;
 	private: System::Windows::Forms::Label^ f_Casilla_Seleccionada;
 	private: System::Windows::Forms::ImageList^ f_Efectos;
+	private: System::Windows::Forms::ImageList^ f_Piezas2;
 
 
 
@@ -214,7 +215,7 @@ namespace Chess {
 			   if (casilla->ImageKey == key && !datos->conEfecto) return; // Innecesario actualizar
 
 			   casilla->ImageKey = key;
-			   casilla->ImageList = f_Piezas;
+			   casilla->ImageList = f_Casilla->ImageList;
 			   //casilla->Image = f_Piezas->Images[casilla->ImageKey];
 		   }
 
@@ -433,6 +434,7 @@ namespace Chess {
 			this->f_Piezas = (gcnew System::Windows::Forms::ImageList(this->components));
 			this->f_Casilla = (gcnew System::Windows::Forms::Label());
 			this->f_Efectos = (gcnew System::Windows::Forms::ImageList(this->components));
+			this->f_Piezas2 = (gcnew System::Windows::Forms::ImageList(this->components));
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->f_Tablero))->BeginInit();
 			this->SuspendLayout();
 			// 
@@ -484,6 +486,26 @@ namespace Chess {
 			this->f_Efectos->ImageSize = System::Drawing::Size(60, 60);
 			this->f_Efectos->TransparentColor = System::Drawing::Color::Transparent;
 			// 
+			// f_Piezas2
+			// 
+			this->f_Piezas2->ImageStream = (cli::safe_cast<System::Windows::Forms::ImageListStreamer^>(resources->GetObject(L"f_Piezas2.ImageStream")));
+			this->f_Piezas2->TransparentColor = System::Drawing::Color::Transparent;
+			this->f_Piezas2->Images->SetKeyName(0, L"CB");
+			this->f_Piezas2->Images->SetKeyName(1, L"AB");
+			this->f_Piezas2->Images->SetKeyName(2, L"AN");
+			this->f_Piezas2->Images->SetKeyName(3, L"CB");
+			this->f_Piezas2->Images->SetKeyName(4, L"CN");
+			this->f_Piezas2->Images->SetKeyName(5, L"DB");
+			this->f_Piezas2->Images->SetKeyName(6, L"DN");
+			this->f_Piezas2->Images->SetKeyName(7, L"PB");
+			this->f_Piezas2->Images->SetKeyName(8, L"PN");
+			this->f_Piezas2->Images->SetKeyName(9, L"RB");
+			this->f_Piezas2->Images->SetKeyName(10, L"RN");
+			this->f_Piezas2->Images->SetKeyName(11, L"TB");
+			this->f_Piezas2->Images->SetKeyName(12, L"TN");
+			this->f_Piezas2->Images->SetKeyName(13, L"RBJ");
+			this->f_Piezas2->Images->SetKeyName(14, L"RNJ");
+			// 
 			// frmPrincipal
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
@@ -491,9 +513,9 @@ namespace Chess {
 			this->ClientSize = System::Drawing::Size(734, 868);
 			this->Controls->Add(this->f_Casilla);
 			this->Controls->Add(this->f_Tablero);
-			this->StartPosition = FormStartPosition::CenterScreen;
 			this->MaximizeBox = false;
 			this->Name = L"frmPrincipal";
+			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
 			this->Text = L"frmPrincipal";
 			this->Load += gcnew System::EventHandler(this, &frmPrincipal::frmPrincipal_Load);
 			this->Click += gcnew System::EventHandler(this, &frmPrincipal::frmPrincipal_Click);
@@ -556,7 +578,7 @@ private:
 		if (!f_Casilla_Seleccionada) return;
 
 		// Restaura la imagen original desde el ImageList
-		f_Casilla_Seleccionada->Image = f_Piezas->Images[f_Casilla_Seleccionada->ImageKey];
+		f_Casilla_Seleccionada->Image = f_Casilla->ImageList->Images[f_Casilla_Seleccionada->ImageKey];
 
 	}
 		
