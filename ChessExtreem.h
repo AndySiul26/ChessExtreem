@@ -1260,9 +1260,18 @@ namespace ChessExtreem
 				tablero.at(c.x).at(c.y) = pieza;
 				break;
 			case TipoPieza::Rey:
-				indiceBando = B_reyes.size();
-				B_reyes.push_back(c);
+                // Si el rey ya existe, se reemplaza por el nuevo no se agrega a la cadena
+				
+				indiceBando = 0;
 				tablero.at(c.x).at(c.y) = pieza;
+
+                if (B_reyes.size() > 0) {
+					B_reyes.at(0) = c;
+                    goto fin; // Salir del switch y no incrementar contadores de piezas
+				}
+				else {
+					B_reyes.push_back(c);
+				}
 				break;
 			case TipoPieza::Peon:
 				indiceBando = B_peones.size();
@@ -1273,9 +1282,11 @@ namespace ChessExtreem
 				break;
 			}
 
-			tablero.at(c.x).at(c.y)->SetIndiceBando(indiceBando);
 
 			IncrementarContadores(coordenadasIE.CIE_tipoPieza);
+
+            fin: 
+			tablero.at(c.x).at(c.y)->SetIndiceBando(indiceBando);
 			CorresponderPiezas();
         }
 
@@ -2030,7 +2041,7 @@ namespace ChessExtreem
 			}
 
 			// Si el movimiento eliminó una pieza, se debe restaurar
-			if (mov.MC_Validacion.getTipoValidacion() == ValidacionMovimiento::Valido_CapturaPiezaEnemiga)
+			if (J_tablero[mov.MC_Movimiento.Destino.x][mov.MC_Movimiento.Destino.y])
 			{
 				// Se debe crear la pieza nuevamente en la posición de destino
 				auto piezaRestablecida = J_tablero[mov.MC_Movimiento.Destino.x][mov.MC_Movimiento.Destino.y]->clonar();				
@@ -2478,6 +2489,10 @@ namespace ChessExtreem
 				{
 					J_estado.setEstado(Estado::Ahogado);
 				}
+                else
+                {
+                    J_estado.setEstado(Estado::Activo);
+                }
 			}
 
 			// Comprobar si hay tablas

@@ -473,7 +473,7 @@ namespace Chess {
 			// 
 			this->f_Casilla->BackColor = System::Drawing::Color::Transparent;
 			this->f_Casilla->ImageIndex = 3;
-			this->f_Casilla->ImageList = this->f_Piezas;
+			this->f_Casilla->ImageList = this->f_Piezas2;
 			this->f_Casilla->Location = System::Drawing::Point(107, 636);
 			this->f_Casilla->Name = L"f_Casilla";
 			this->f_Casilla->Size = System::Drawing::Size(64, 64);
