@@ -58,6 +58,11 @@ namespace Chess {
 	private: System::Windows::Forms::Label^ f_Casilla_Seleccionada;
 	private: System::Windows::Forms::ImageList^ f_Efectos;
 	private: System::Windows::Forms::ImageList^ f_Piezas2;
+	private: System::Windows::Forms::Label^ InfoTimeBlancas;
+	private: System::Windows::Forms::Label^ InfoJ1;
+	private: System::Windows::Forms::Label^ InfoJ2;
+	private: System::Windows::Forms::Label^ InfoTime2;
+
 
 
 
@@ -433,15 +438,19 @@ namespace Chess {
 			this->f_Tablero = (gcnew System::Windows::Forms::PictureBox());
 			this->f_Piezas = (gcnew System::Windows::Forms::ImageList(this->components));
 			this->f_Casilla = (gcnew System::Windows::Forms::Label());
-			this->f_Efectos = (gcnew System::Windows::Forms::ImageList(this->components));
 			this->f_Piezas2 = (gcnew System::Windows::Forms::ImageList(this->components));
+			this->f_Efectos = (gcnew System::Windows::Forms::ImageList(this->components));
+			this->InfoTimeBlancas = (gcnew System::Windows::Forms::Label());
+			this->InfoJ1 = (gcnew System::Windows::Forms::Label());
+			this->InfoJ2 = (gcnew System::Windows::Forms::Label());
+			this->InfoTime2 = (gcnew System::Windows::Forms::Label());
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->f_Tablero))->BeginInit();
 			this->SuspendLayout();
 			// 
 			// f_Tablero
 			// 
 			this->f_Tablero->Image = (cli::safe_cast<System::Drawing::Image^>(resources->GetObject(L"f_Tablero.Image")));
-			this->f_Tablero->Location = System::Drawing::Point(63, 144);
+			this->f_Tablero->Location = System::Drawing::Point(68, 48);
 			this->f_Tablero->Name = L"f_Tablero";
 			this->f_Tablero->Size = System::Drawing::Size(600, 600);
 			this->f_Tablero->SizeMode = System::Windows::Forms::PictureBoxSizeMode::StretchImage;
@@ -474,17 +483,11 @@ namespace Chess {
 			this->f_Casilla->BackColor = System::Drawing::Color::Transparent;
 			this->f_Casilla->ImageIndex = 3;
 			this->f_Casilla->ImageList = this->f_Piezas2;
-			this->f_Casilla->Location = System::Drawing::Point(107, 636);
+			this->f_Casilla->Location = System::Drawing::Point(112, 540);
 			this->f_Casilla->Name = L"f_Casilla";
 			this->f_Casilla->Size = System::Drawing::Size(64, 64);
 			this->f_Casilla->TabIndex = 1;
 			this->f_Casilla->Click += gcnew System::EventHandler(this, &frmPrincipal::f_Casilla_Click);
-			// 
-			// f_Efectos
-			// 
-			this->f_Efectos->ColorDepth = System::Windows::Forms::ColorDepth::Depth32Bit;
-			this->f_Efectos->ImageSize = System::Drawing::Size(60, 60);
-			this->f_Efectos->TransparentColor = System::Drawing::Color::Transparent;
 			// 
 			// f_Piezas2
 			// 
@@ -506,11 +509,67 @@ namespace Chess {
 			this->f_Piezas2->Images->SetKeyName(13, L"RBJ");
 			this->f_Piezas2->Images->SetKeyName(14, L"RNJ");
 			// 
+			// f_Efectos
+			// 
+			this->f_Efectos->ColorDepth = System::Windows::Forms::ColorDepth::Depth32Bit;
+			this->f_Efectos->ImageSize = System::Drawing::Size(60, 60);
+			this->f_Efectos->TransparentColor = System::Drawing::Color::Transparent;
+			// 
+			// InfoTimeBlancas
+			// 
+			this->InfoTimeBlancas->AutoSize = true;
+			this->InfoTimeBlancas->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 12, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point,
+				static_cast<System::Byte>(0)));
+			this->InfoTimeBlancas->Location = System::Drawing::Point(64, 666);
+			this->InfoTimeBlancas->Name = L"InfoTimeBlancas";
+			this->InfoTimeBlancas->Size = System::Drawing::Size(228, 20);
+			this->InfoTimeBlancas->TabIndex = 2;
+			this->InfoTimeBlancas->Text = L"TIEMPO RESTANTE: 10:00";
+			// 
+			// InfoJ1
+			// 
+			this->InfoJ1->AutoSize = true;
+			this->InfoJ1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 12, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point,
+				static_cast<System::Byte>(0)));
+			this->InfoJ1->Location = System::Drawing::Point(557, 666);
+			this->InfoJ1->Name = L"InfoJ1";
+			this->InfoJ1->Size = System::Drawing::Size(111, 20);
+			this->InfoJ1->TabIndex = 3;
+			this->InfoJ1->Text = L"JUGADOR 1";
+			this->InfoJ1->TextAlign = System::Drawing::ContentAlignment::TopRight;
+			// 
+			// InfoJ2
+			// 
+			this->InfoJ2->AutoSize = true;
+			this->InfoJ2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 12, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point,
+				static_cast<System::Byte>(0)));
+			this->InfoJ2->Location = System::Drawing::Point(557, 19);
+			this->InfoJ2->Name = L"InfoJ2";
+			this->InfoJ2->Size = System::Drawing::Size(111, 20);
+			this->InfoJ2->TabIndex = 5;
+			this->InfoJ2->Text = L"JUGADOR 2";
+			this->InfoJ2->TextAlign = System::Drawing::ContentAlignment::TopRight;
+			// 
+			// InfoTime2
+			// 
+			this->InfoTime2->AutoSize = true;
+			this->InfoTime2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 12, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point,
+				static_cast<System::Byte>(0)));
+			this->InfoTime2->Location = System::Drawing::Point(64, 19);
+			this->InfoTime2->Name = L"InfoTime2";
+			this->InfoTime2->Size = System::Drawing::Size(228, 20);
+			this->InfoTime2->TabIndex = 4;
+			this->InfoTime2->Text = L"TIEMPO RESTANTE: 10:00";
+			// 
 			// frmPrincipal
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-			this->ClientSize = System::Drawing::Size(734, 868);
+			this->ClientSize = System::Drawing::Size(734, 695);
+			this->Controls->Add(this->InfoJ2);
+			this->Controls->Add(this->InfoTime2);
+			this->Controls->Add(this->InfoJ1);
+			this->Controls->Add(this->InfoTimeBlancas);
 			this->Controls->Add(this->f_Casilla);
 			this->Controls->Add(this->f_Tablero);
 			this->MaximizeBox = false;
@@ -521,6 +580,7 @@ namespace Chess {
 			this->Click += gcnew System::EventHandler(this, &frmPrincipal::frmPrincipal_Click);
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->f_Tablero))->EndInit();
 			this->ResumeLayout(false);
+			this->PerformLayout();
 
 		}
 
