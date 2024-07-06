@@ -1,6 +1,7 @@
 ﻿#pragma once
 #ifndef CHESS_EFECTOS_H
 #define CHESS_EFECTOS_H
+
 #include "ChessExtreem.h"
 
 

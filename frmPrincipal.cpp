@@ -9,7 +9,7 @@ int main(array<String^>^ args)
 {
     Application::EnableVisualStyles();
     Application::SetCompatibleTextRenderingDefault(false);
-
+    
     Chess::Login^ frmLogin = gcnew Chess::Login();
     Application::Run(frmLogin);
 

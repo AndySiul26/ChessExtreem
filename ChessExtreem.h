@@ -18,6 +18,8 @@
 
 #include "solucionar.h"
 
+
+
 namespace ChessExtreem
 {
     enum class TipoBando
@@ -234,6 +236,13 @@ namespace ChessExtreem
         {
             return Coordenadas{ abs(x) ,abs(y) };
         }
+    
+        Coordenadas operator=(const Coordenadas& c1) {
+            if(this == &c1) return *this;
+			x = c1.x;
+			y = c1.y;
+			return *this;
+		}
 
 
 		// Operadores de asignación
@@ -245,6 +254,9 @@ namespace ChessExtreem
         Coordenadas operator/(int escalar) const;
 		
     };
+
+    
+    
 
     // Sobrecarga de operadores para Coordenadas
     bool operator==(const Coordenadas& c1, const Coordenadas& c2) {
@@ -2753,6 +2765,16 @@ namespace ChessExtreem
         }
     }
     // SECCIÓN DE MODO DE JUEGO POR CONSOLA (PUEDE FUNCIONAR SOLO COMO DEMOSTRACIÓN) ->
+}
+
+// Definición de la función hash para las coordenadas al estandar de C++ para unordered_map
+namespace std {
+    template<>
+    struct hash<ChessExtreem::Coordenadas> {
+        size_t operator()(const ChessExtreem::Coordenadas& coord) const {
+            return coord.x ^ (coord.y << 16);
+        }
+    };
 }
 
 

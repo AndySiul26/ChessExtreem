@@ -5,7 +5,6 @@
 #include <msclr/marshal_cppstd.h>
 
 
-
 namespace Chess {
 
 	using namespace System;
