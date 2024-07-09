@@ -1,12 +1,30 @@
 ﻿#include "frmPrincipal.h"
 #include "Login.h"  // Incluye el encabezado del nuevo formulario
+#include "ManejadorDatosChess.h"
+#include "ManagerPostgreDB.h"
+#include <iostream>
 
 using namespace System;
 using namespace System::Windows::Forms;
+using namespace ChessExtreem;
+void FirstTest()
+{
+   
+    testPostgre(); // Probar la conexión POSTGRESQL
+
+}
+
+void SecondTest()
+{
+    // Probar la conexión POSTGRESQL
+}
 
 [STAThreadAttribute]
 int main(array<String^>^ args)
 {
+    FirstTest();
+    SecondTest();
+    
     Application::EnableVisualStyles();
     Application::SetCompatibleTextRenderingDefault(false);
     

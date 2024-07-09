@@ -79,6 +79,7 @@
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <AdditionalDependencies />
@@ -129,6 +130,7 @@
   <ItemGroup>
     <ClInclude Include="ChessEfectos.h" />
     <ClInclude Include="ChessExtreem.h" />
+    <ClInclude Include="ChessGameDataBaseManager.h" />
     <ClInclude Include="CLogin.h" />
     <ClInclude Include="frmPrincipal.h">
       <FileType>CppForm</FileType>
@@ -138,6 +140,7 @@
     <ClInclude Include="Login.h">
       <FileType>CppForm</FileType>
     </ClInclude>
+    <ClInclude Include="ManagerPostgreDB.h" />
     <ClInclude Include="ManejadorDatosChess.h" />
     <ClInclude Include="SelectorPieza.h">
       <FileType>CppForm</FileType>
@@ -157,8 +160,12 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <None Include="DataBase\CrearEsquema.sql" />
     <None Include="ManejadorDatosChess.inl" />
     <None Include="README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="DataBase\conexion.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

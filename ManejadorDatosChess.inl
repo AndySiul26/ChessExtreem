@@ -1,7 +1,21 @@
 ﻿
 #include "ManejadorDatosChess.h"
+#include <stdexcept>
 
 // Manejadro de datos de Chess inl file es un archivo de implementacion que contiene las clases y funciones necesarias para manejar los datos de la aplicacion de ajedrez.
+
+	
+// Metodos generales
+	
+size_t std::hash<ChessExtreem::DatosBasicosJugada>::operator()(const ChessExtreem::DatosBasicosJugada& jugada) const {
+	std::hash<int> hash;
+	auto coord = jugada.coordenadas;
+	int tipo = hash(static_cast<int>(jugada.tipoPieza));
+
+	return hash(coord.x) ^ hash(coord.y) ^ tipo; // Se realiza un XOR entre las coordenadas y el tipo de pieza			
+}
+
+
 
 // Implementacion de la clase ManejadorDatosChess
 namespace ChessExtreem
@@ -16,44 +30,65 @@ namespace ChessExtreem
 		return x >= 0 && x < 8 && y >= 0 && y < 8;
 	}
 
-	// Metodo que comprime una cadena de texto
+
+	const char COMPRESSION_INDICATOR = '\''; // Usamos '~' como indicador de compresión
+
 	std::string compressRLE(const std::string& input) {
-		std::string compressed;
+		if (input.empty()) {
+			return input;
+		}
+
+		std::string compressed = std::string(1, COMPRESSION_INDICATOR); // Añadimos el indicador al inicio
 		for (size_t i = 0; i < input.length(); i++) {
-			int count = 1; // Numero de veces que se repite el caracter
-			while (i + 1 < input.length() && input[i] == input[i + 1]) { // Mientras el caracter actual sea igual al siguiente
-				count++; // Incrementar el contador
-				i++; // Incrementar el indice
+			int count = 1;
+			while (i + 1 < input.length() && input[i] == input[i + 1]) {
+				count++;
+				i++;
 			}
-			compressed += input[i]; // Agregar el caracter
+			compressed += input[i];
 			if (count > 1) {
-				compressed += std::to_string(count); // Agregar el contador
+				compressed += std::to_string(count);
 			}
 		}
-		return compressed; // Devolver la cadena comprimida
+		return compressed;
 	}
 
-	// Metodo que descomprime una cadena de texto
 	std::string decompressRLE(const std::string& compressed) {
-		std::string decompressed; // Cadena descomprimida
-		for (size_t i = 0; i < compressed.length(); i++) { // Recorrer la cadena comprimida
-			if (isValidCoordinate(compressed[i])) { // Si el caracter es una coordenada válida
-				int count = 1; // Numero de veces que se repite el caracter
-				if (i + 1 < compressed.length() && std::isdigit(compressed[i + 1])) { // Si el siguiente caracter es un digito
-					count = 0; // Reiniciar el contador
-					while (i + 1 < compressed.length() && std::isdigit(compressed[i + 1])) { // Mientras el siguiente caracter sea un digito
-						count = count * 10 + (compressed[i + 1] - '0'); // Incrementar el contador
-						i++; // Incrementar el indice
+		if (compressed.empty()) {
+			return compressed;
+		}
+
+		// Verificamos si la cadena está comprimida
+		if (compressed[0] != COMPRESSION_INDICATOR) {
+			return compressed; // Si no está comprimida, devolvemos la cadena original
+		}
+
+		std::string decompressed;
+		for (size_t i = 1; i < compressed.length(); i++) { // Empezamos desde 1 para saltar el indicador
+			if (isValidCoordinate(compressed[i])) {
+				int count = 1;
+				size_t digiCount = 0;
+				if (i + 1 < compressed.length() && std::isdigit(compressed[i + 1])) {
+					count = 0;
+					while (i + 1 < compressed.length() && std::isdigit(compressed[i + 1])) {
+						digiCount++; // Contar el número de dígitos
+						count = count * 10 + (compressed[i + 1] - '0');
+						i++;
 					}
 				}
-				decompressed.append(count, compressed[i]); // Agregar el caracter a la cadena descomprimida
+				decompressed.append(count, compressed[i - digiCount]);
 			}
-			else {
+			else if (compressed[i] != COMPRESSION_INDICATOR) {
 				// Manejar error: carácter inválido en la secuencia comprimida
-				throw std::runtime_error("Carácter inválido en la secuencia comprimida"); // Lanzar una excepción
+				throw std::runtime_error("Carácter inválido en la secuencia comprimida");
 			}
 		}
 		return decompressed;
+	}
+
+	// Función auxiliar para verificar si una cadena está comprimida
+	bool isCompressed(const std::string& str) {
+		return !str.empty() && str[0] == COMPRESSION_INDICATOR;
 	}
 
 	// Metodo para serializar las coordenadas
@@ -61,20 +96,82 @@ namespace ChessExtreem
 		return std::to_string(coord.x) + "," + std::to_string(coord.y);
 	}
 
+	// Metodos del DatosChessGame << Inicio
+	
+	// Constructor y Destructor
+
+	// Constructor
+	DatosChessGame::DatosChessGame()
+	{
+		jugadas.clear(); // Limpiar las jugadas
+	}
+
+	// Constructor
+	DatosChessGame::DatosChessGame(const Jugadas& jugadas)
+	{
+		for (auto& jugada : jugadas)
+		{
+			// Agregar las coordenadas y el tipo de pieza
+			this->jugadas.push_back({ jugada.J_movimiento.MC_Movimiento.Origen, jugada.tipoPieza });
+			this->jugadas.push_back({ jugada.J_movimiento.MC_Movimiento.Destino, jugada.tipoPieza });
+		}
+	}
+
+	// Constructor
+	DatosChessGame::DatosChessGame(const CadenaCoordenadas& cc, const VectorTipoPieza& vtp)
+	{
+		if(cc.size() != vtp.size())
+			throw std::runtime_error("Las cadenas de coordenadas y los tipos de piezas no tienen la misma longitud"); // Lanzar una excepción (las cadenas de coordenadas y los tipos de piezas no tienen la misma longitud
+
+		for (size_t i = 0; i < cc.size(); i++)
+		{
+			// Agregar las coordenadas y el tipo de pieza
+			jugadas.push_back({ cc[i], vtp[i] });
+		}
+
+	}
+
+	// Constructor de copia
+	DatosChessGame::DatosChessGame(const DatosChessGame& otro)
+	{
+		jugadas = otro.jugadas; // Copiar las jugadas	
+	}
+
+	// Constructor de movimiento
+	DatosChessGame::DatosChessGame(DatosChessGame&& otro) noexcept
+	{
+		jugadas = std::move(otro.jugadas); // Mover las jugadas
+	}
+
+	// Destructor
+	DatosChessGame::~DatosChessGame()
+	{
+		jugadas.clear(); // Limpiar las jugadas
+	}
+
+	// Operador de asignación
+	DatosChessGame& DatosChessGame::operator= (const DatosChessGame& otro)
+	{
+		if (this != &otro)
+		{
+			jugadas = otro.jugadas; // Copiar las jugadas
+		}
+		return *this; // Devolver el objeto actual
+	}
+
+	// Metodos del DatosChessGame << Fin
 	
 	// Metodos del ManejadorDatosChess << Inicio
+	
 	// Constructor
 	ManejadorDatosChess::ManejadorDatosChess()
 	{
-		// Inicializar el mapa de equivalencia
-		InicializarMapaEquivalencia();
+
 	}
 
 	// Constructor
 	ManejadorDatosChess::ManejadorDatosChess(const std::string& cadena)
 	{
-		// Inicializar el mapa de equivalencia
-		InicializarMapaEquivalencia();
 		this->cadena = cadena; // Asignar la cadena
 		ConvertirCadenaInterna(); // Convertir la cadena interna
 		GenerarFirmaInterna(); // Generar la firma
@@ -84,49 +181,40 @@ namespace ChessExtreem
 	// Constructor
 	ManejadorDatosChess::ManejadorDatosChess(const std::string& cadena, const std::string& firma)
 	{
-		// Inicializar el mapa de equivalencia
-		InicializarMapaEquivalencia();
 		this->cadena = cadena; // Asignar la cadena
 		ConvertirCadenaInterna(); // Convertir la cadena interna
 		this->firma = firma; // Asignar la firma
 	}
 
 	// Constructor
-	ManejadorDatosChess::ManejadorDatosChess(const std::string& cadena, const std::string& firma, const CadenaCoordenadas& coordenadas)
+	ManejadorDatosChess::ManejadorDatosChess(const std::string& cadena, const std::string& firma, const DatosChessGame& juego)
 	{
-		// Inicializar el mapa de equivalencia
-		InicializarMapaEquivalencia();
 		this->cadena = cadena; // Asignar la cadena
 		this->firma = firma; // Asignar la firma
-		cadenaCoordenadas = coordenadas; // Asignar las coordenadas
+		this->juego = juego; // Asignar el juego
 	}
 
 	// Constructor de copia
 	ManejadorDatosChess::ManejadorDatosChess(ManejadorDatosChess& otro)
 	{
-		// Inicializar el mapa de equivalencia
-		InicializarMapaEquivalencia();
 		cadena = otro.cadena; // Asignar la cadena
 		firma = otro.firma; // Asignar la firma
-		cadenaCoordenadas = otro.cadenaCoordenadas; // Asignar las coordenadas
+		juego = otro.juego; // Asignar el juego
 	}
 
 	// Constructor de movimiento
 	ManejadorDatosChess::ManejadorDatosChess(ManejadorDatosChess&& otro) noexcept
 	{
-		// Inicializar el mapa de equivalencia
-		InicializarMapaEquivalencia();
 		cadena = std::move(otro.cadena); // Mover la cadena
 		firma = std::move(otro.firma); // Mover la firma
-		cadenaCoordenadas = std::move(otro.cadenaCoordenadas); // Mover las coordenadas
+		juego = std::move(otro.juego); // Mover las coordenadas
 	}
 
 	// Destructor
 	ManejadorDatosChess::~ManejadorDatosChess()
 	{
-		// Limpiar el mapa de equivalencia
-		mapaEquivalencia.clear();
-		cadenaCoordenadas.clear();
+		// Limpiar los datos
+		juego.jugadas.clear();
 		cadena.clear();
 		firma.clear();
 	}
@@ -152,6 +240,32 @@ namespace ChessExtreem
 		return { value / 8, value % 8 }; // Devolver las coordenadas
 	}
 
+	char ManejadorDatosChess::EncodificarTipoPieza(TipoPieza tipoPieza) {
+		return static_cast<char>((int)tipoPieza + 130);
+	}
+
+	TipoPieza ManejadorDatosChess::DecodificarTipoPieza(char caracter) {
+		return static_cast<TipoPieza>(caracter - 130);
+	}
+
+	std::string ManejadorDatosChess::EncodificarJugada(const DatosBasicosJugada& jugada) {
+		// Concatenar dos chars para la jugada
+		
+        std::string str;
+        str.push_back(EncodificarCoordenada(jugada.coordenadas));
+        str.push_back(EncodificarTipoPieza(jugada.tipoPieza));
+		// si se tienen dos caracteres a,b se concatenan en un solo string ab
+		return str;
+	}
+
+	DatosBasicosJugada ManejadorDatosChess::DecodificarJugada(const std::string& jugada) {
+		// Decodificar la jugada
+		if (jugada.length() != 2) {
+			throw std::runtime_error("La jugada no tiene el formato correcto");
+		}
+		return { DecodificarCoordenada(jugada[0]), DecodificarTipoPieza(jugada[1]) };
+	}
+
 	std::string ManejadorDatosChess::GenerarFirma(const std::string& sequence) {
 		const int PRIME = 31;
 		long long hash = 0;
@@ -161,13 +275,11 @@ namespace ChessExtreem
 		return std::to_string(hash);
 	}
 
-	
-
-	// Metodo que convierte la cadena interna
+	// Metodo que convierte una cadena en un juego de ajedrez
 	void ManejadorDatosChess::ConvertirCadenaInterna()
 	{
-		// Convertir la cadena interna
-		cadenaCoordenadas = ConvertirCadena(cadena); // Convertir la cadena en coordenadas
+		// Convertir la cadena en un juego de ajedrez
+		juego = ConvertirCadena(cadena); // Convertir la cadena en coordenadas		
 	}
 
 	// Metodo que genera una firma de las secuencias de cada juego de ajedrez
@@ -177,50 +289,35 @@ namespace ChessExtreem
 		firma = GenerarFirma(cadena); // Generar la firma de la cadena
 	}
 
-	// Metodo que inicializa el mapa de equivalencia de las cadenas de texto con las coordenadas de las piezas del tablero
-	void ManejadorDatosChess::InicializarMapaEquivalencia()
-	{
-		// Inicializar el mapa de equivalencia
-		for (int i = 0; i < 8; i++)
-		{
-			for (int j = 0; j < 8; j++)
-			{				
-				mapaEquivalencia[EncodificarCoordenada(i, j)] = Coordenadas(i, j);
-				mapaEquivalenciaInverso[Coordenadas(i, j)] = EncodificarCoordenada(i, j);
-			}
-		}
-	}
-
 	// Metodo que convierte una cadena en coordenadas de las piezas
-	CadenaCoordenadas ManejadorDatosChess::ConvertirCadena(const std::string& cadena)
+	DatosChessGame ManejadorDatosChess::ConvertirCadena(const std::string& cadena)
 	{
-		// Convertir la cadena en coordenadas
-		CadenaCoordenadas coordenadas; // Coordenadas de las piezas
-		for (size_t i = 0; i < cadena.length(); i++)
-		{
-			// Si el mapa de equivalencia (std::unordered_map<char, Coordenadas>) ya esta inicializado usarlo en vez de calcularlo
-			if(mapaEquivalenciaInicializado)
-				coordenadas.push_back(mapaEquivalencia[cadena[i]]); // Agregar las coordenadas
-			else
-				coordenadas.push_back(DecodificarCoordenada(cadena[i])); // Decodificar el caracter y agregar las coordenadas
+		if(isCompressed(cadena)) {
+			return ConvertirCadena(decompressRLE(cadena));
 		}
-		return coordenadas; // Devolver las coordenadas
+		// Convertir la cadena en coordenadas
+		CadenaCoordenadas cc; // Cadena de coordenadas
+		VectorTipoPieza vtp; // Vector de tipos de pieza
+
+		for (size_t i = 0; i < cadena.length(); i+=2)
+		{
+			// Decodificar la jugada
+			DatosBasicosJugada jugada = DecodificarJugada(cadena.substr(i, 2));
+			cc.push_back(jugada.coordenadas); // Agregar las coordenadas
+			vtp.push_back(jugada.tipoPieza); // Agregar el tipo de pieza
+		}
+
+		return {cc,vtp}; // Devolver las coordenadas
 	}
 
 	// Metodo que convierte las coordenadas de las piezas en una cadena
-	std::string ManejadorDatosChess::ConvertirCoordenadas(const CadenaCoordenadas& coordenadas)
+	std::string ManejadorDatosChess::ConvertirJuego(const DatosChessGame& juego)
 	{
 		// Convertir las coordenadas en una cadena
 		std::string cadena; // Cadena de texto
-		for (Coordenadas coord : coordenadas)
+		for (auto jugada : juego.jugadas)
 		{
-			if(!isValidCoordinate(coord.x, coord.y)) // Verificar si las coordenadas son válidas
-				throw std::runtime_error("Coordenadas inválidas"); // Lanzar una excepción (coordenadas inválidas)
-			// Si el mapa de equivalencia (std::unordered_map<Coordenadas, char>) ya esta inicializado usarlo en vez de calcularlo
-			if(mapaEquivalenciaInicializado)
-				cadena += mapaEquivalenciaInverso[coord]; // Agregar el caracter
-			else
-				cadena += EncodificarCoordenada(coord); // Codificar las coordenadas y agregar el caracter
+			cadena += EncodificarJugada(jugada); // Codificar la jugada y agregarla a la cadena
 		}
 		return cadena; // Devolver la cadena
 	}
@@ -228,3 +325,4 @@ namespace ChessExtreem
 	// Metodos del ManejadorDatosChess << Fin
 
 }
+

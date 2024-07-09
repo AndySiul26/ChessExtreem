@@ -17,7 +17,8 @@
 #include <mutex> // Incluir la librería necesaria para std::mutex
 
 #include "solucionar.h"
-
+#include "ManagerPostgreDB.h"   
+// #include "ChessGameDataBaseManager.h"
 
 
 namespace ChessExtreem
@@ -244,6 +245,15 @@ namespace ChessExtreem
 			return *this;
 		}
 
+        // Operador de negación
+        bool operator!() const {
+			return x == -1 || y == -1;
+		}
+
+        // Operador de afirmación
+        explicit operator bool() const {
+            return x != -1 && y != -1;
+        }
 
 		// Operadores de asignación
         Coordenadas operator+(const Coordenadas& c1) const;
@@ -1489,6 +1499,27 @@ namespace ChessExtreem
             CorresponderPiezas();
 		}
 
+        void LimpiarBando()
+        {
+            B_reyes.clear();
+			B_damas.clear();
+			B_peones.clear();
+			B_caballos.clear();
+			B_alfiles.clear();
+			B_torres.clear();
+
+			B_cantidadAlfiles.store(0);
+			B_cantidadCaballos.store(0);
+			B_cantidadDamas.store(0);
+			B_cantidadPeones.store(0);
+			B_cantidadReyes.store(0);
+			B_cantidadTorres.store(0);
+			B_cantidadPiezas.store(0);
+
+			CorresponderPiezas();
+		
+        }
+
 };
 
 
@@ -1514,6 +1545,11 @@ namespace ChessExtreem
 
         TableroAjedrez J_tablero;
         std::shared_ptr<Pieza> casillaNula;
+
+        void GuardarJuegoTerminado()
+        {
+
+        }
 
 		void ActualizarCopiaJuego() {
 			std::lock_guard<std::mutex> lock(J_mutex);            
@@ -2359,6 +2395,14 @@ namespace ChessExtreem
             J_estado.setEstado(Estado::Inicializado);
         }
 
+        void LimpiarJuego()
+        {
+            Inicializar();
+			J_blancas.LimpiarBando();
+			J_negras.LimpiarBando();
+			J_jugadas.clear();
+        }
+
         // Metodo que crea las piezas y activa lo necesario para comenzar el juego y activarlo
         void CrearJuego()
         {
@@ -2374,10 +2418,69 @@ namespace ChessExtreem
 
         }
 
+        void ReiniciarJuego()
+		{
+			LimpiarJuego();
+			CrearJuego();
+		}
+
         Juego ObtenerCopia()
         {
             return *this;
         }
+
+        // Metodo que construye el juego de una partida anterior con solo las coordenadas de movimiento de las piezas
+        bool ConstruirJuego(const CadenaCoordenadas& cc)
+		{
+			LimpiarJuego();
+			CrearJuego();
+
+            Movimiento Mov;
+            Movimiento AnteMov;
+            bool EsBandoBlancas = true; // Bando por defecto
+            bool AnteBandoBlancas = true; // Bando por defecto
+            bool ErrorAlConstruir = false;
+
+            // Dos Coordenadas de cc (vector<Coordenadas>) representan un movimiento
+            for (auto& c : cc) {
+				if (Mov.Origen == CoordenadasNulas) {
+                    auto& pieza = ObtenerPieza(c);
+
+                    if (!pieza) // Si no hay pieza en la coordenada se sale porque no se puede construir el movimiento compuesto
+                    {
+                        ErrorAlConstruir = true;
+                        break;
+                    }
+
+                    EsBandoBlancas = pieza->getBandoBlancas();
+                    if (EsBandoBlancas == AnteBandoBlancas)
+                    {
+                        ErrorAlConstruir = true;
+                        break; // Se sale, debido a que la secuencia de movimientos no es válida porque no se puede mover dos veces seguidas el mismo bando
+                    }
+                    
+                    if (AnteMov.Origen != CoordenadasNulas && !EsPiezaDelTurno(c)) continue; // Con cada movimiento el turno cambia, si ya no corresponde al mismo bando se salta porque este es un movimiento compuesto que ya se realizó 
+					Mov.Origen = c;
+				}
+				else {
+					Mov.Destino = c;
+                    if (MoverPieza(Mov.Origen, Mov.Destino))
+                    {
+                        AnteMov = Mov;
+                        AnteBandoBlancas = EsBandoBlancas;
+                        Mov = Movimiento{};
+                    }
+					else // Si no se puede mover la pieza se sale porque no se puede construir el movimiento compuesto
+					{ 
+						ErrorAlConstruir = true;
+						break;
+					}
+				}
+			}
+
+            return !ErrorAlConstruir;
+			
+		}
 
 		bool EsJuegoTerminado() const
 		{
@@ -2603,7 +2706,9 @@ namespace ChessExtreem
 
         bool EsPiezaDelTurno(int x, int y)
         {
-            return J_tablero[x][y]->getBandoBlancas() == J_estado.esTurnoBlancas();
+            auto& pieza = J_tablero[x][y];
+            if (!pieza) return false;
+            return pieza->getBandoBlancas() == J_estado.esTurnoBlancas();
         }
 
         bool EsPiezaDelTurno(Coordenadas c)
@@ -2621,9 +2726,17 @@ namespace ChessExtreem
             }
         }
 
+        // Obtiene las coordenadas del juego actual
+        const Jugadas& ObtenerJugadas() const
+		{
+			return J_jugadas;
+		}
+        
         /*void establecerEstado(Estado nuevoEstado) {
             estado.setEstado(nuevoEstado);
         }*/
+
+
     };
 
     // <- SECCIÓN DE MODO DE JUEGO POR CONSOLA (PUEDE FUNCIONAR SOLO COMO DEMOSTRACIÓN) 
